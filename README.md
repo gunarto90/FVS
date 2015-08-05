@@ -5,4 +5,7 @@ Following option need to be set before run the application
 <b> Java VM Option </b> -Xmx4g
 
 Library dependencies:
-Weka
+<ul>
+<li> Weka </li>
+<li> Multimap </li>
+</ul>
