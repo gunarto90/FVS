@@ -1,7 +1,11 @@
 package edu.nctu.lalala.fvs;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
@@ -27,7 +31,6 @@ enum FVS_Algorithm {
 public class FVS extends Filter {
 	FVS_Algorithm algo;
 	// Map<FV, Integer> fv_list = new HashMap<>();
-	Multimap<FV, Integer> fv_list = ArrayListMultimap.create();
 
 	public FVS() {
 		algo = FVS_Algorithm.Threshold;
@@ -72,6 +75,7 @@ public class FVS extends Filter {
 			setOutputFormat(outFormat);
 		}
 
+		Multimap<FV, Integer> fv_list = ArrayListMultimap.create();
 		Instances inst = getInputFormat();
 		Instances outFormat = getOutputFormat();
 		for (int i = 0; i < inst.numInstances(); i++) {
@@ -85,16 +89,16 @@ public class FVS extends Filter {
 					value = ins.value(x);
 				}
 				FV fv = new FV(x, value, ins.classValue());
-				if(!fv_list.put(fv, 1))
-				{
-					System.err.println("Couldn't put duplicates: "+fv);
+				if (!fv_list.put(fv, 1)) {
+					System.err.println("Couldn't put duplicates: " + fv);
 				}
 			}
 			Instance new_ins = getFilteredInstance(ins, fv_list);
 		}
-		Map<FV, Collection<Integer>> map = fv_list.asMap();
+		Multimap<FV, Integer> reduced_fv_list = applyRandomRemoval(fv_list);
+		Map<FV, Collection<Integer>> map = reduced_fv_list.asMap();
 		for (FV key : map.keySet()) {
-			System.out.println(key + "--" + "\t" + fv_list.get(key).size());
+			System.out.println(key + "--" + "\t" + reduced_fv_list.get(key).size());
 		}
 		// Instances inst = getInputFormat();
 		// Instances outFormat = getOutputFormat();
@@ -128,28 +132,47 @@ public class FVS extends Filter {
 	 * @param inst
 	 * @return
 	 */
-//	protected Instances process(Instances inst) {
-//		Instances result = new Instances(inst, 0);
-//		for (int i = 0; i < inst.numInstances(); i++) {
-//			Instance ins = inst.instance(i);
-//			for (int x = 0; x < ins.numAttributes(); x++) {
-//				Object value = null;
-//				try {
-//					value = ins.stringValue(x);
-//				} catch (Exception e) {
-//					value = ins.value(x);
-//				}
-//				FV fv = new FV(x, value);
-//				fv_list.put(fv, 1);
-//			}
-//		}
-//		for (Iterator<Entry<FV, Integer>> iterator = fv_list.entries().iterator(); iterator.hasNext();) {
-//			Entry<FV, Integer> entry = iterator.next();
-//			System.out.println(entry.getKey() + ":" + entry.getValue());
-//		}
-//
-//		return result;
-//	}
+	// protected Instances process(Instances inst) {
+	// Instances result = new Instances(inst, 0);
+	// for (int i = 0; i < inst.numInstances(); i++) {
+	// Instance ins = inst.instance(i);
+	// for (int x = 0; x < ins.numAttributes(); x++) {
+	// Object value = null;
+	// try {
+	// value = ins.stringValue(x);
+	// } catch (Exception e) {
+	// value = ins.value(x);
+	// }
+	// FV fv = new FV(x, value);
+	// fv_list.put(fv, 1);
+	// }
+	// }
+	// for (Iterator<Entry<FV, Integer>> iterator =
+	// fv_list.entries().iterator(); iterator.hasNext();) {
+	// Entry<FV, Integer> entry = iterator.next();
+	// System.out.println(entry.getKey() + ":" + entry.getValue());
+	// }
+	//
+	// return result;
+	// }
+
+	private Multimap<FV, Integer> applyRandomRemoval(Multimap<FV, Integer> fv_list) {
+		Multimap<FV, Integer> result = ArrayListMultimap.create();
+		result.putAll(fv_list);
+		Random r = new Random();
+		List<FV> keys = new ArrayList();
+		for (FV k : fv_list.keySet())
+			keys.add(k);
+		int total = r.nextInt(keys.size());
+		while (total > 0 && keys.size() > 0) {
+//			System.out.println(keys.size());
+			int index = r.nextInt(keys.size());
+			result.removeAll(keys.get(index));
+			keys.remove(index);
+			total--;
+		}
+		return result;
+	}
 
 	private Instance getFilteredInstance(Instance ins, Multimap<FV, Integer> fv_list) {
 		return new Instance(ins);

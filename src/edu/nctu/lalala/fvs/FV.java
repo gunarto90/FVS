@@ -37,7 +37,7 @@ public class FV {
 		int hash = 5;
 		hash = 71 * hash + this.getFeature();
 		hash = 71 * hash + Objects.hashCode(this.getValue());
-		hash = (int) (71 * hash + this.getLabel());
+//		hash = (int) (71 * hash + this.getLabel());
 		return hash;
 	}
 
@@ -56,9 +56,9 @@ public class FV {
 		if (!Objects.equals(this.value, other.value)) {
 			return false;
 		}
-		if (!Objects.equals(this.label, other.label)) {
-			return false;
-		}
+//		if (!Objects.equals(this.label, other.label)) {
+//			return false;
+//		}
 		return true;
 	}
 
