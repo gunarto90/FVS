@@ -1,6 +1,7 @@
 package edu.nctu.lalala.fvs;
 
 import java.io.File;
+import java.io.IOException;
 
 import weka.classifiers.Classifier;
 import weka.classifiers.Evaluation;
@@ -21,7 +22,7 @@ enum DiscretizationType {
 }
 
 @SuppressWarnings("unused")
-public class FeatureValueSelection {
+public class Main {
 
 	private static final boolean IS_DEBUG = true;
 
@@ -35,20 +36,20 @@ public class FeatureValueSelection {
 	/**
 	 * static Singleton instance
 	 */
-	private static FeatureValueSelection instance;
+	private static Main instance;
 
 	/**
 	 * Private constructor for singleton
 	 */
-	private FeatureValueSelection() {
+	private Main() {
 	}
 
 	/**
 	 * Static getter method for retrieving the singleton instance
 	 */
-	public static FeatureValueSelection getInstance() {
+	public static Main getInstance() {
 		if (instance == null) {
-			instance = new FeatureValueSelection();
+			instance = new Main();
 		}
 		return instance;
 	}
@@ -86,6 +87,8 @@ public class FeatureValueSelection {
 		if (IS_DEBUG)
 			System.err.println(lookupFolder);
 
+		ClassifierType type = ClassifierType.J48;
+
 		for (String f : folder.list()) {
 			try {
 				// Load original data
@@ -94,15 +97,24 @@ public class FeatureValueSelection {
 				Instances discretized = discretize(data, DiscretizationType.Binning);
 				// Filter dataset using FVS algorithm
 				Instances filtered = featureValueSelection(discretized, FVS_Algorithm.Threshold);
+				// Build classifier based on original data
+				Classifier o_cl = buildClassifier(discretized, type);
 				// Build classifier based on filtered data
-//				Classifier cl = buildClassifier(data, ClassifierType.J48);
-//				// Evaluate the dataset
-//				Evaluation eval = new Evaluation(data);
-//				// Cross validate dataset
-//				eval.crossValidateModel(cl, data, CROSS_VALIDATION, new Random(1));
-//				if (IS_DEBUG)
-//					System.out.println(cl.toString());
-//				printEvaluation(eval, null, data.classIndex());
+				Classifier f_cl = buildClassifier(filtered, type);
+				// // Evaluate the dataset
+				Evaluation o_eval = new Evaluation(discretized);
+				Evaluation f_eval = new Evaluation(filtered);
+				// // Cross validate dataset
+				o_eval.crossValidateModel(o_cl, discretized, CROSS_VALIDATION, new Random(1));
+				f_eval.crossValidateModel(f_cl, filtered, CROSS_VALIDATION, new Random(1));
+				// if (IS_DEBUG)
+				// System.out.println(cl.toString());
+				printEvaluation(o_eval, null, discretized.classIndex());
+				printEvaluation(f_eval, null, filtered.classIndex());
+				// Compare model size
+				compareModelSize(o_cl, f_cl);
+				System.out.println(o_cl.toString());
+				System.out.println(f_cl.toString());
 			} catch (Exception e) {
 				if (IS_DEBUG)
 					e.printStackTrace();
@@ -158,7 +170,7 @@ public class FeatureValueSelection {
 	}
 
 	private double calculateAccuracy(double TP, double TN, double FP, double FN) {
-		return (TP + TN) / (TP + TN + FP + FN);
+		return (TP) / (TP + TN + FP + FN);
 	}
 
 	private void printEvaluation(Evaluation eval, String outputFile, int classIndex, String... params) {
@@ -216,6 +228,25 @@ public class FeatureValueSelection {
 			e.printStackTrace();
 		}
 		return result;
+	}
+
+	public void compareModelSize(Classifier original, Classifier filtered) throws IOException {
+		System.out.println("Ori_length: " + original.toString().length());
+		System.out.println("Filtered_length: " + filtered.toString().length());
+		// File f_ori = File.createTempFile("ccc_original", "weka_model");
+		// File f_filtered = File.createTempFile("ccc_filtered", "weka_model");
+		// try {
+		// weka.core.SerializationHelper.write(f_ori.getAbsolutePath(),
+		// original);
+		// weka.core.SerializationHelper.write(f_filtered.getAbsolutePath(),
+		// filtered);
+		// System.out.println(f_ori.getAbsolutePath());
+		// System.out.println(f_filtered.getAbsolutePath());
+		// System.out.println("Ori_length: "+f_ori.length());
+		// System.out.println("Filtered_length: "+f_filtered.length());
+		// } catch (Exception e) {
+		// e.printStackTrace();
+		// }
 	}
 
 }

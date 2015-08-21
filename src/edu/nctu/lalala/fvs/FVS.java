@@ -2,6 +2,7 @@ package edu.nctu.lalala.fvs;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -17,7 +18,7 @@ import weka.core.Instances;
 import weka.filters.Filter;
 
 enum FVS_Algorithm {
-	Threshold, Correlation
+	Null, Random, Threshold, Correlation
 }
 
 /**
@@ -59,6 +60,7 @@ public class FVS extends Filter {
 	}
 
 	/**
+	 * Feature selection process is handled here ... <br/>
 	 * Doing feature value selection by using specified algorithm (Threshold or
 	 * Correlation)
 	 */
@@ -69,15 +71,13 @@ public class FVS extends Filter {
 		// output format still needs to be set (depends on first batch of data)
 		if (!isFirstBatchDone()) {
 			Instances outFormat = new Instances(getInputFormat(), 0);
-			// outFormat.insertAttributeAt(new Attribute(
-			// "bla-" + getInputFormat().numInstances()),
-			// outFormat.numAttributes());
 			setOutputFormat(outFormat);
 		}
 
 		Multimap<FV, Integer> fv_list = ArrayListMultimap.create();
 		Instances inst = getInputFormat();
-		Instances outFormat = getOutputFormat();
+		double[] substitution = calculateAverage(inst);
+		// Instances outFormat = getOutputFormat();
 		for (int i = 0; i < inst.numInstances(); i++) {
 			Instance ins = inst.instance(i);
 			// Skip the class label
@@ -88,33 +88,103 @@ public class FVS extends Filter {
 				} catch (Exception e) {
 					value = ins.value(x);
 				}
+				// TODO Class label using String
+				// Class value as a double
+				// How about String?
+				// Not implemented yet
 				FV fv = new FV(x, value, ins.classValue());
 				if (!fv_list.put(fv, 1)) {
 					System.err.println("Couldn't put duplicates: " + fv);
 				}
 			}
-			Instance new_ins = getFilteredInstance(ins, fv_list);
 		}
-		Multimap<FV, Integer> reduced_fv_list = applyRandomRemoval(fv_list);
-		Map<FV, Collection<Integer>> map = reduced_fv_list.asMap();
-		for (FV key : map.keySet()) {
-			System.out.println(key + "--" + "\t" + reduced_fv_list.get(key).size());
+		// Remove possible feature values
+		Map<FV, Collection<Integer>> original_map = fv_list.asMap();
+		int percent_filter = 80; // Leave 20% fv left
+		int total = original_map.size() * percent_filter / 100;
+		Map<FV, Collection<Integer>> filtered_map = applyRandomRemoval(original_map, total);
+		// printFVs(fv_list, fv_list.asMap());
+		// printFVs(reduced_fv_list, reduced_fv_list.asMap());
+		System.out.println("Number of feature value (Original): " + original_map.size());
+		System.out.println("Number of feature value (Filtered): " + filtered_map.size());
+
+		// Apply FVS to the instances and push to
+		// TODO Comment this if not debug, or give IS_DEBUG options
+		Instances output = applyFVS(inst, filtered_map, substitution);
+		// System.out.println(inst.numInstances());
+		// System.out.println(output.numInstances());
+
+		for (int i = 0; i < output.numInstances(); i++) {
+			System.out.println(output.instance(i));
+			push(output.instance(i));
 		}
-		// Instances inst = getInputFormat();
-		// Instances outFormat = getOutputFormat();
-		// for (int i = 0; i < inst.numInstances(); i++) {
-		// double[] newValues = new double[outFormat.numAttributes()];
-		// double[] oldValues = inst.instance(i).toDoubleArray();
-		// System.arraycopy(oldValues, 0, newValues, 0, oldValues.length);
-		// newValues[newValues.length - 1] = i;
-		// push(new Instance(1.0, newValues));
-		// }
 
 		flushInput();
 		m_NewBatch = true;
 		m_FirstBatchDone = true;
 
 		return (numPendingOutput() != 0);
+	}
+
+	private double[] calculateAverage(Instances inst) {
+		double[] substitution = new double[inst.numAttributes() - 1];
+		for (int i = 0; i < inst.numInstances(); i++) {
+			for (int x = 0; x < inst.instance(i).numAttributes() - 1; x++) {
+				substitution[x] += inst.instance(i).value(x);
+			}
+		}
+		for (int i = 0; i < inst.numAttributes() - 1; i++) {
+			substitution[i] /= inst.numInstances();
+		}
+		return substitution;
+	}
+
+	private void printFVs(Multimap<FV, Integer> reduced_fv_list, Map<FV, Collection<Integer>> map) {
+		for (FV key : map.keySet()) {
+			System.out.println(key + "--" + "\t" + reduced_fv_list.get(key).size());
+		}
+	}
+
+	private Instances applyFVS(Instances inst, Map<FV, Collection<Integer>> map, double[] substitution) {
+		Instances output = getOutputFormat();
+		Set<FV> set = map.keySet();
+		// Prepare the list
+		// First level indicate which attribute the FVS resides in
+		List<List<Value>> list = new ArrayList<>();
+		for (int i = 0; i < inst.numAttributes(); i++) {
+			list.add(new ArrayList<Value>());
+		}
+		// Build the data structure
+		for (FV fv : set) {
+			list.get(fv.getFeature()).add(new Value(fv.getValue().toString()));
+		}
+		for (int i = 0; i < inst.numInstances(); i++) {
+			Instance instance = getFVSFilteredInstance(output, inst.instance(i), list, substitution);
+			output.add(instance);
+		}
+		return output;
+	}
+
+	private Instance getFVSFilteredInstance(Instances output, Instance old_inst, List<List<Value>> list,
+			double[] substitution) {
+		double[] oldValues = old_inst.toDoubleArray();
+		Instance instance = new Instance(old_inst);
+		// Change with value that is available
+		for (int i = 0; i < oldValues.length - 1; i++) {
+			// System.out.println(oldValues[i]);
+			// System.out.println(list.get(i));
+			// System.out.println("############################");
+			// If list doesn't contain, then delete
+			Value v = new Value(oldValues[i]);
+			int idx = list.get(i).indexOf(v);
+			if (idx == -1) {
+				// Change with substitution
+				instance.setValue(i, substitution[i]);
+				// Change into missing
+//				instance.setMissing(i);
+			}
+		}
+		return instance;
 	}
 
 	protected Instances determineOutputFormat(Instances inputFormat) {
@@ -156,25 +226,31 @@ public class FVS extends Filter {
 	// return result;
 	// }
 
-	private Multimap<FV, Integer> applyRandomRemoval(Multimap<FV, Integer> fv_list) {
-		Multimap<FV, Integer> result = ArrayListMultimap.create();
+	/**
+	 * *************************************************************************
+	 * Write FVS Algorithm here
+	 * *************************************************************************
+	 **/
+
+	public Map<FV, Collection<Integer>> applyRandomRemoval(Map<FV, Collection<Integer>> fv_list, int total) {
+		if (total == 0)
+			return fv_list;
+		Map<FV, Collection<Integer>> result = new HashMap<FV, Collection<Integer>>();
 		result.putAll(fv_list);
 		Random r = new Random();
-		List<FV> keys = new ArrayList();
+		// Transfer from map to list first
+		List<FV> keys = new ArrayList<>();
 		for (FV k : fv_list.keySet())
 			keys.add(k);
-		int total = r.nextInt(keys.size());
+		// int total = r.nextInt(keys.size()); // Randomly remove number of
+		// items
 		while (total > 0 && keys.size() > 0) {
-//			System.out.println(keys.size());
+			// System.out.println(keys.size());
 			int index = r.nextInt(keys.size());
-			result.removeAll(keys.get(index));
+			result.remove(keys.get(index));
 			keys.remove(index);
 			total--;
 		}
 		return result;
-	}
-
-	private Instance getFilteredInstance(Instance ins, Multimap<FV, Integer> fv_list) {
-		return new Instance(ins);
 	}
 }

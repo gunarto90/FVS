@@ -64,7 +64,7 @@ public class FV {
 
 	@Override
 	public String toString() {
-		String output = String.format("FV{%-3d : %18s (%2.0f) } ", this.feature, this.value, this.label);
+		String output = String.format("FV{%-3d : %12s (%2.0f) } ", this.feature, this.value, this.label);
 		return output;
 	}
 
