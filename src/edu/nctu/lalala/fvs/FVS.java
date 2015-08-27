@@ -3,8 +3,10 @@ package edu.nctu.lalala.fvs;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
 
@@ -31,14 +33,20 @@ enum FVS_Algorithm {
  */
 public class FVS extends Filter {
 	FVS_Algorithm algo;
+	Double[] params;
+	private int numInstances;
 	// Map<FV, Integer> fv_list = new HashMap<>();
 
-	public FVS() {
-		algo = FVS_Algorithm.Threshold;
+	public FVS(int numInstances, Double... params) {
+		algo = FVS_Algorithm.Null;
+		this.setNumInstances(numInstances);
+		this.params = params;
 	}
 
-	public FVS(FVS_Algorithm algo) {
+	public FVS(FVS_Algorithm algo, int numInstances, Double... params) {
 		this.algo = algo;
+		this.setNumInstances(numInstances);
+		this.params = params;
 	}
 
 	/**
@@ -74,9 +82,10 @@ public class FVS extends Filter {
 			setOutputFormat(outFormat);
 		}
 
-		Multimap<FV, Integer> fv_list = ArrayListMultimap.create();
+		Multimap<FV, FV> fv_list = ArrayListMultimap.create();
 		Instances inst = getInputFormat();
 		double[] substitution = calculateAverage(inst);
+		int numOfClassLabels = inst.numClasses();
 		// Instances outFormat = getOutputFormat();
 		for (int i = 0; i < inst.numInstances(); i++) {
 			Instance ins = inst.instance(i);
@@ -93,16 +102,50 @@ public class FVS extends Filter {
 				// How about String?
 				// Not implemented yet
 				FV fv = new FV(x, value, ins.classValue());
-				if (!fv_list.put(fv, 1)) {
+				fv.setNumLabels(numOfClassLabels);
+				if (!fv_list.put(fv, fv)) {
 					System.err.println("Couldn't put duplicates: " + fv);
 				}
 			}
 		}
 		// Remove possible feature values
-		Map<FV, Collection<Integer>> original_map = fv_list.asMap();
+		Map<FV, Collection<FV>> original_map = fv_list.asMap();
+		// Default parameters
 		int percent_filter = 80; // Leave 20% fv left
+		double threshold = 0.5;
+		// Lookup on params
+		if(params.length>0)
+		{
+			if(algo==FVS_Algorithm.Random)
+			{
+				percent_filter = params[0].intValue();
+			}
+			else if(algo==FVS_Algorithm.Threshold)
+			{
+				threshold = params[0];
+			}
+		}
+		
 		int total = original_map.size() * percent_filter / 100;
-		Map<FV, Collection<Integer>> filtered_map = applyRandomRemoval(original_map, total);
+		Map<FV, Collection<FV>> filtered_map = null;
+
+		// Apply removal based on Algorithm
+		switch (this.algo) {
+		case Null:
+			filtered_map = applyRandomRemoval(original_map, 0);
+			break;
+		case Random:
+			filtered_map = applyRandomRemoval(original_map, total);
+			break;
+		case Threshold:
+			filtered_map = applyThresholdRemoval(original_map, threshold);
+			break;
+		case Correlation:
+			filtered_map = applyCorrelationRemoval(original_map);
+			break;
+		default:
+			break;
+		}
 		// printFVs(fv_list, fv_list.asMap());
 		// printFVs(reduced_fv_list, reduced_fv_list.asMap());
 		System.out.println("Number of feature value (Original): " + original_map.size());
@@ -115,7 +158,7 @@ public class FVS extends Filter {
 		// System.out.println(output.numInstances());
 
 		for (int i = 0; i < output.numInstances(); i++) {
-			System.out.println(output.instance(i));
+//			System.out.println(output.instance(i));
 			push(output.instance(i));
 		}
 
@@ -139,13 +182,13 @@ public class FVS extends Filter {
 		return substitution;
 	}
 
-	private void printFVs(Multimap<FV, Integer> reduced_fv_list, Map<FV, Collection<Integer>> map) {
+	private void printFVs(Multimap<FV, FV> reduced_fv_list, Map<FV, Collection<FV>> map) {
 		for (FV key : map.keySet()) {
 			System.out.println(key + "--" + "\t" + reduced_fv_list.get(key).size());
 		}
 	}
 
-	private Instances applyFVS(Instances inst, Map<FV, Collection<Integer>> map, double[] substitution) {
+	private Instances applyFVS(Instances inst, Map<FV, Collection<FV>> map, double[] substitution) {
 		Instances output = getOutputFormat();
 		Set<FV> set = map.keySet();
 		// Prepare the list
@@ -181,7 +224,7 @@ public class FVS extends Filter {
 				// Change with substitution
 				instance.setValue(i, substitution[i]);
 				// Change into missing
-//				instance.setMissing(i);
+				// instance.setMissing(i);
 			}
 		}
 		return instance;
@@ -232,10 +275,17 @@ public class FVS extends Filter {
 	 * *************************************************************************
 	 **/
 
-	public Map<FV, Collection<Integer>> applyRandomRemoval(Map<FV, Collection<Integer>> fv_list, int total) {
+	/**
+	 * Remove FV randomly, and let some remains
+	 * 
+	 * @param fv_list
+	 * @param total
+	 * @return Remaining FVs
+	 */
+	public Map<FV, Collection<FV>> applyRandomRemoval(Map<FV, Collection<FV>> fv_list, int total) {
 		if (total == 0)
 			return fv_list;
-		Map<FV, Collection<Integer>> result = new HashMap<FV, Collection<Integer>>();
+		Map<FV, Collection<FV>> result = new HashMap<FV, Collection<FV>>();
 		result.putAll(fv_list);
 		Random r = new Random();
 		// Transfer from map to list first
@@ -252,5 +302,78 @@ public class FVS extends Filter {
 			total--;
 		}
 		return result;
+	}
+
+	/**
+	 * Remove FV based on its threshold, if it is over <b> threshold </b> then
+	 * it would be removed. Let the FVs that has entropy below threshold
+	 * remains.
+	 * 
+	 * @param fv_list
+	 * @param threshold
+	 * @return Remaining FVs
+	 */
+	public Map<FV, Collection<FV>> applyThresholdRemoval(Map<FV, Collection<FV>> fv_list, double threshold) {
+		Map<FV, Collection<FV>> result = new HashMap<FV, Collection<FV>>();
+		Iterator<Entry<FV, Collection<FV>>> iterator = fv_list.entrySet().iterator();
+		// Calculate entropy and frequency for each
+		while(iterator.hasNext())
+		{
+			Entry<FV, Collection<FV>> next = iterator.next();
+			FV key = next.getKey();
+			key.setFrequency((double)next.getValue().size()/this.numInstances);
+			double[] counter = new double[key.getNumLabels()];
+			for(FV fv: next.getValue())
+			{
+				int idx = (int) fv.getLabel();
+				counter[idx]++;
+			}
+			key.setEntropy(calculateEntropy(counter, next.getValue().size()));
+		}
+		result.putAll(fv_list);
+		// Apply removal
+		for (FV k : fv_list.keySet()) {
+			System.out.println(k);
+			if (k.getEntropy() > threshold)
+				result.remove(k);
+		}
+		return result;
+	}
+
+	public Map<FV, Collection<FV>> applyCorrelationRemoval(Map<FV, Collection<FV>> fv_list) {
+		Map<FV, Collection<FV>> result = new HashMap<FV, Collection<FV>>();
+		result.putAll(fv_list);
+		return result;
+	}
+	
+	/**
+	 * *************************************************************************
+	 * Utility function here
+	 * *************************************************************************
+	 **/
+	
+	private double calculateEntropy(double[] counter, double frequency)
+	{
+		if(frequency==0) return 0;
+		double entropy = 0;
+		double[] p = new double[counter.length];
+		for(int i=0; i<counter.length; i++)
+		{
+			p[i] = counter[i]/frequency;
+		}
+		for(int i=0; i<p.length; i++)
+		{
+			if(p[i]==0.0F) continue;
+			entropy -= p[i] * (Math.log(p[i])/Math.log(p.length));
+		}
+		return entropy;
+	}
+
+	int getNumInstances() {
+		return numInstances;
+	}
+
+	void setNumInstances(int numInstances) {
+		this.numInstances = numInstances;
 	}
 }

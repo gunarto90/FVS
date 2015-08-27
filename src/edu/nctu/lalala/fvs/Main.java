@@ -96,7 +96,7 @@ public class Main {
 				// Create discretized set
 				Instances discretized = discretize(data, DiscretizationType.Binning);
 				// Filter dataset using FVS algorithm
-				Instances filtered = featureValueSelection(discretized, FVS_Algorithm.Threshold);
+				Instances filtered = featureValueSelection(discretized, FVS_Algorithm.Threshold, discretized.numInstances(), 0.5D);
 				// Build classifier based on original data
 				Classifier o_cl = buildClassifier(discretized, type);
 				// Build classifier based on filtered data
@@ -109,12 +109,12 @@ public class Main {
 				f_eval.crossValidateModel(f_cl, filtered, CROSS_VALIDATION, new Random(1));
 				// if (IS_DEBUG)
 				// System.out.println(cl.toString());
-				printEvaluation(o_eval, null, discretized.classIndex());
-				printEvaluation(f_eval, null, filtered.classIndex());
+				printEvaluation(o_eval, null, discretized.classIndex(), "Original");
+				printEvaluation(f_eval, null, filtered.classIndex(), "Filtered");
 				// Compare model size
 				compareModelSize(o_cl, f_cl);
-				System.out.println(o_cl.toString());
-				System.out.println(f_cl.toString());
+//				System.out.println(o_cl.toString());
+//				System.out.println(f_cl.toString());
 			} catch (Exception e) {
 				if (IS_DEBUG)
 					e.printStackTrace();
@@ -181,13 +181,18 @@ public class Main {
 		FP = eval.numFalsePositives(classIndex);
 		FN = eval.numFalsePositives(classIndex);
 
-		System.out.println(eval.toSummaryString());
+//		System.out.println(eval.toSummaryString());
 
 		System.out.println("Total instances: " + total);
 		System.out.println("Correct: " + TP);
 		System.out.println("Accuracy: " + calculateAccuracy(TP, TN, FP, FN));
 		System.out.println("Precision: " + calculatePrecision(TP, FP));
 		System.out.println("Recall: " + calculateRecall(TP, FN));
+		for(String s: params)
+		{
+			System.out.println(s);
+		}
+		System.out.println();
 
 		if (outputFile != null) {
 			// Write to file
@@ -216,9 +221,9 @@ public class Main {
 		return result;
 	}
 
-	private Instances featureValueSelection(Instances data, FVS_Algorithm algo) {
+	private Instances featureValueSelection(Instances data, FVS_Algorithm algo, int numInstances, Double... params) {
 		Instances result = null;
-		Filter filter = new FVS(algo);
+		Filter filter = new FVS(algo, numInstances, params);
 		try {
 			if (filter == null)
 				return null;

@@ -23,8 +23,9 @@ public class FV {
 	 * Class label
 	 */
 	private double label;
-	private int frequency;
+	private double frequency;
 	private double entropy;
+	private int numOfClassLabels;
 
 	public FV(int feature, Object value, double label) {
 		this.feature = feature;
@@ -64,7 +65,7 @@ public class FV {
 
 	@Override
 	public String toString() {
-		String output = String.format("FV{%-3d : %12s (%2.0f) } ", this.feature, this.value, this.label);
+		String output = String.format("FV{%-3d : %15s (%2.0f) [E:%.3f] [F:%.3f]} ", this.feature, this.value, this.label, getEntropy(), getFrequency());
 		return output;
 	}
 
@@ -92,11 +93,11 @@ public class FV {
 		this.label = label;
 	}
 
-	public int getFrequency() {
+	public double getFrequency() {
 		return frequency;
 	}
 
-	public void setFrequency(int frequency) {
+	public void setFrequency(double frequency) {
 		this.frequency = frequency;
 	}
 
@@ -106,5 +107,13 @@ public class FV {
 
 	public void setEntropy(double entropy) {
 		this.entropy = entropy;
+	}
+
+	public int getNumLabels() {
+		return numOfClassLabels;
+	}
+
+	public void setNumLabels(int numOfClassLabels) {
+		this.numOfClassLabels = numOfClassLabels;
 	}
 }
