@@ -111,14 +111,14 @@ public class FVS extends Filter {
 		// Remove possible feature values
 		Map<FV, Collection<FV>> original_map = fv_list.asMap();
 		// Default parameters
-		int percent_filter = 80; // Leave 20% fv left
+		double percent_filter = 80; // Leave 20% fv left
 		double threshold = 0.5;
 		// Lookup on params
 		if(params.length>0)
 		{
 			if(algo==FVS_Algorithm.Random)
 			{
-				percent_filter = params[0].intValue();
+				percent_filter = params[0];
 			}
 			else if(algo==FVS_Algorithm.Threshold)
 			{
@@ -126,7 +126,7 @@ public class FVS extends Filter {
 			}
 		}
 		
-		int total = original_map.size() * percent_filter / 100;
+		int total = (int)((double)original_map.size() * percent_filter);
 		Map<FV, Collection<FV>> filtered_map = null;
 
 		// Apply removal based on Algorithm
@@ -148,8 +148,8 @@ public class FVS extends Filter {
 		}
 		// printFVs(fv_list, fv_list.asMap());
 		// printFVs(reduced_fv_list, reduced_fv_list.asMap());
-		System.out.println("Number of feature value (Original): " + original_map.size());
-		System.out.println("Number of feature value (Filtered): " + filtered_map.size());
+//		System.out.println("Number of feature value (Original): " + original_map.size());
+//		System.out.println("Number of feature value (Filtered): " + filtered_map.size());
 
 		// Apply FVS to the instances and push to
 		// TODO Comment this if not debug, or give IS_DEBUG options
