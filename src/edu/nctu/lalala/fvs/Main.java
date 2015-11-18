@@ -30,9 +30,9 @@ public class Main {
 	private static final String DEFAULT_DATASET_FOLDER = "dataset";
 	private static final String NOMINAL_FOLDER = DEFAULT_DATASET_FOLDER + "/nominal/";
 	private static final String NUMERIC_FOLDER = DEFAULT_DATASET_FOLDER + "/numeric/";
-	private static final String TEST_FOLDER = DEFAULT_DATASET_FOLDER + "/test/";
+	private static final String TEST_FOLDER = DEFAULT_DATASET_FOLDER + "/htc/";
 	private static final String REPORT_FOLDER = "report" + "/";
-	private static final String REPORT_HEADER = "Method\tClassifier\tDiscretization\tAccuracy\tPrecision\tRecall\tModel ratio\tDouble param";
+	private static final String REPORT_HEADER = "Method\tClassifier\tDiscretization\tAccuracy\tPrecision\tRecall\tModel ratio\tDouble param\n";
 	/**
 	 * Method - String<br/>
 	 * Classification Algorithm - String<br/>
@@ -115,17 +115,17 @@ public class Main {
 				Instances discretized = discretize(data, dis_alg);
 				// Build classifier based on original data
 				Classifier o_cl = buildClassifier(discretized, type);
-				int base_model_size = o_cl.toString().length();
 				// Evaluate the dataset
 				Evaluation o_eval = new Evaluation(discretized);
 				// Cross validate dataset
 				o_eval.crossValidateModel(o_cl, discretized, CROSS_VALIDATION, new Random(1));
 //				printEvaluation(o_eval, null, discretized.classIndex(), "Original");
 				writeReport(REPORT_FOLDER, datasetName, discretized.classIndex(), o_eval, o_cl,
-						(double) o_cl.toString().length() / base_model_size, double_param, "Original", type, dis_alg);
+						1, double_param, "Original", type, dis_alg);
 				// System.out.println(o_cl.toString());
 				for (int i = 0; i <= RUN_REPETITION; i++) {
 					double_param = (double) i / RUN_REPETITION;
+					System.out.println(datasetName + " : " + double_param);
 					// Filter dataset using FVS algorithm
 					Instances filtered = featureValueSelection(discretized, fvs_alg, discretized.numInstances(),
 							double_param);
@@ -139,10 +139,12 @@ public class Main {
 					// System.out.println(cl.toString());
 //					printEvaluation(f_eval, null, filtered.classIndex(), "Filtered");
 					// Compare model size
-//					compareModelSize(o_cl, f_cl);
-					// System.out.println(f_cl.toString());
+					J48 a = (J48) o_cl;
+					J48 b = (J48) f_cl;
+//					writeReport(REPORT_FOLDER, datasetName, filtered.classIndex(), f_eval, f_cl,
+//							(double) f_cl.toString().length() / base_model_size, double_param, fvs_alg, type, dis_alg);
 					writeReport(REPORT_FOLDER, datasetName, filtered.classIndex(), f_eval, f_cl,
-							(double) f_cl.toString().length() / base_model_size, double_param, fvs_alg, type, dis_alg);
+							(double) b.measureNumLeaves() / a.measureNumLeaves(), double_param, fvs_alg, type, dis_alg);
 				}
 			} catch (Exception e) {
 				if (IS_DEBUG)
@@ -175,6 +177,7 @@ public class Main {
 		switch (type) {
 		case J48:
 			c = new J48();
+			((J48)c).setUnpruned(true);
 			break;
 		case JRip:
 			c = new JRip();
@@ -184,6 +187,7 @@ public class Main {
 			break;
 		default:
 			c = new J48();
+			((J48)c).setUnpruned(true);
 			break;
 		}
 		c.buildClassifier(data);
@@ -263,25 +267,6 @@ public class Main {
 		return result;
 	}
 
-	public void compareModelSize(Classifier original, Classifier filtered) throws IOException {
-		System.out.println("Ori_length: " + original.toString().length());
-		System.out.println("Filtered_length: " + filtered.toString().length());
-		// File f_ori = File.createTempFile("ccc_original", "weka_model");
-		// File f_filtered = File.createTempFile("ccc_filtered", "weka_model");
-		// try {
-		// weka.core.SerializationHelper.write(f_ori.getAbsolutePath(),
-		// original);
-		// weka.core.SerializationHelper.write(f_filtered.getAbsolutePath(),
-		// filtered);
-		// System.out.println(f_ori.getAbsolutePath());
-		// System.out.println(f_filtered.getAbsolutePath());
-		// System.out.println("Ori_length: "+f_ori.length());
-		// System.out.println("Filtered_length: "+f_filtered.length());
-		// } catch (Exception e) {
-		// e.printStackTrace();
-		// }
-	}
-
 	private void writeReport(String folder, String datasetName, int classIndex, Evaluation eval, Classifier cl,
 			double model_ratio, double double_param, Object... params) throws IOException {
 		if (!folder.endsWith("/"))
@@ -293,9 +278,10 @@ public class Main {
 		File ffolder = new File(folder);
 		ffolder.mkdirs();
 		File f = new File(folder + datasetName);
+		boolean new_file = f.createNewFile();
 		FileWriter fileWriter = new FileWriter(f, true);
-		if (f.createNewFile())
-			fileWriter.append(REPORT_HEADER);
+		if (new_file)
+			fileWriter.write(REPORT_HEADER);
 		double TP, TN, FP, FN;
 		double total = eval.numInstances();
 		TP = eval.correct();

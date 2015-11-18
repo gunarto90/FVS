@@ -148,8 +148,13 @@ public class FVS extends Filter {
 		}
 		// printFVs(fv_list, fv_list.asMap());
 		// printFVs(reduced_fv_list, reduced_fv_list.asMap());
-//		System.out.println("Number of feature value (Original): " + original_map.size());
-//		System.out.println("Number of feature value (Filtered): " + filtered_map.size());
+		List<Double> original_en_list = getListEntropy(original_map);
+		List<Double> filtered_en_list = getListEntropy(filtered_map);
+		double avg_o_en = calculateAverageEntropy(original_en_list);
+		double avg_f_en = calculateAverageEntropy(filtered_en_list);
+		
+		System.out.println("Number of feature value (Original)\tNumber of feature value (Filtered)\tAvg Entropy (Original)\tAvg Entropy (Filtered)");
+		System.out.println(String.format("%d\t%d\t%f\t%f", original_map.size(), filtered_map.size(), avg_o_en, avg_f_en));
 
 		// Apply FVS to the instances and push to
 		// TODO Comment this if not debug, or give IS_DEBUG options
@@ -167,6 +172,30 @@ public class FVS extends Filter {
 		m_FirstBatchDone = true;
 
 		return (numPendingOutput() != 0);
+	}
+	
+	private List<Double> getListEntropy(final Map<FV, Collection<FV>> map)
+	{
+		List<Double> result = new ArrayList<Double>();
+		for(Collection<FV> cfv: map.values())
+		{
+			for(FV fv : cfv)
+			{
+				result.add(fv.getEntropy());
+			}
+		}
+		return result;
+	}
+	
+	private double calculateAverageEntropy(final List<Double> list)
+	{
+		double result = 0.0;
+		if(list.isEmpty()) return result;
+		for(Double d: list)
+		{
+			result += d;
+		}
+		return result/list.size();
 	}
 
 	private double[] calculateAverage(Instances inst) {
@@ -333,7 +362,6 @@ public class FVS extends Filter {
 		result.putAll(fv_list);
 		// Apply removal
 		for (FV k : fv_list.keySet()) {
-			System.out.println(k);
 			if (k.getEntropy() > threshold)
 				result.remove(k);
 		}
