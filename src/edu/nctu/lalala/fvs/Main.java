@@ -8,6 +8,7 @@ import weka.classifiers.Classifier;
 import weka.classifiers.Evaluation;
 import weka.classifiers.functions.SMO;
 import weka.classifiers.rules.JRip;
+import weka.classifiers.trees.DecisionStump;
 import weka.classifiers.trees.J48;
 import weka.core.Debug.Random;
 import weka.core.Instances;
@@ -15,7 +16,7 @@ import weka.core.converters.ConverterUtils.DataSource;
 import weka.filters.Filter;
 
 enum ClassifierType {
-	J48, JRip, SMO
+	J48, JRip, SMO, J48_Pruned, DecisionStump
 }
 
 enum DiscretizationType {
@@ -102,7 +103,7 @@ public class Main {
 		if (IS_DEBUG)
 			System.err.println(lookupFolder);
 
-		ClassifierType type = ClassifierType.J48;
+		ClassifierType type = ClassifierType.J48_Pruned;
 		DiscretizationType dis_alg = DiscretizationType.Binning;
 		FVS_Algorithm fvs_alg = FVS_Algorithm.Threshold;
 
@@ -111,6 +112,7 @@ public class Main {
 				double double_param = 0.0;
 				// Load original data
 				Instances data = loadData(lookupFolder + datasetName);
+				data.delete(0);	// delete timestamp
 				// Create discretized set
 				Instances discretized = discretize(data, dis_alg);
 				// Build classifier based on original data
@@ -119,9 +121,20 @@ public class Main {
 				Evaluation o_eval = new Evaluation(discretized);
 				// Cross validate dataset
 				o_eval.crossValidateModel(o_cl, discretized, CROSS_VALIDATION, new Random(1));
+				double modelSize = 0;
+				J48 a = null, b = null;
+				try
+				{
+					a = (J48) o_cl;
+					modelSize = a.measureNumLeaves();
+				}
+				catch(Exception e)
+				{
+					
+				}
 //				printEvaluation(o_eval, null, discretized.classIndex(), "Original");
 				writeReport(REPORT_FOLDER, datasetName, discretized.classIndex(), o_eval, o_cl,
-						1, double_param, "Original", type, dis_alg);
+						modelSize, double_param, "Original", type, dis_alg);
 				// System.out.println(o_cl.toString());
 				for (int i = 0; i <= RUN_REPETITION; i++) {
 					double_param = (double) i / RUN_REPETITION;
@@ -139,13 +152,26 @@ public class Main {
 					// System.out.println(cl.toString());
 //					printEvaluation(f_eval, null, filtered.classIndex(), "Filtered");
 					// Compare model size
-					J48 a = (J48) o_cl;
-					J48 b = (J48) f_cl;
+					
+					try
+					{
+						b = (J48) f_cl;
+						modelSize = (double) b.measureNumLeaves() / a.measureNumLeaves();
+					}
+					catch(Exception e)
+					{
+						
+					}
 //					writeReport(REPORT_FOLDER, datasetName, filtered.classIndex(), f_eval, f_cl,
 //							(double) f_cl.toString().length() / base_model_size, double_param, fvs_alg, type, dis_alg);
 					writeReport(REPORT_FOLDER, datasetName, filtered.classIndex(), f_eval, f_cl,
-							(double) b.measureNumLeaves() / a.measureNumLeaves(), double_param, fvs_alg, type, dis_alg);
+							modelSize, double_param, fvs_alg, type, dis_alg);
+					filtered.delete();
+					System.gc();
 				}
+				System.out.println();
+				data.delete();
+				System.gc();
 			} catch (Exception e) {
 				if (IS_DEBUG)
 					e.printStackTrace();
@@ -179,11 +205,18 @@ public class Main {
 			c = new J48();
 			((J48)c).setUnpruned(true);
 			break;
+		case J48_Pruned:
+			c = new J48();
+			((J48)c).setUnpruned(false);
+			break;
 		case JRip:
 			c = new JRip();
 			break;
 		case SMO:
 			c = new SMO();
+			break;
+		case DecisionStump:
+			c = new DecisionStump();
 			break;
 		default:
 			c = new J48();
@@ -287,7 +320,7 @@ public class Main {
 		TP = eval.correct();
 		TN = eval.incorrect();
 		FP = eval.numFalsePositives(classIndex);
-		FN = eval.numFalsePositives(classIndex);
+		FN = eval.numFalseNegatives(classIndex);
 		fileWriter.append(String.format(REPORT_FORMAT, params[0].toString(), params[1].toString(), params[2].toString(),
 				calculateAccuracy(TP, TN, FP, FN), calculatePrecision(TP, FP), calculateRecall(TP, FN), model_ratio,
 				double_param));

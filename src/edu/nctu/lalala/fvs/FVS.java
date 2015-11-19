@@ -148,13 +148,11 @@ public class FVS extends Filter {
 		}
 		// printFVs(fv_list, fv_list.asMap());
 		// printFVs(reduced_fv_list, reduced_fv_list.asMap());
-		List<Double> original_en_list = getListEntropy(original_map);
-		List<Double> filtered_en_list = getListEntropy(filtered_map);
-		double avg_o_en = calculateAverageEntropy(original_en_list);
-		double avg_f_en = calculateAverageEntropy(filtered_en_list);
+//		double avg_o_en = calculateAverageEntropy(original_map);
+//		double avg_f_en = calculateAverageEntropy(filtered_map);
 		
-		System.out.println("Number of feature value (Original)\tNumber of feature value (Filtered)\tAvg Entropy (Original)\tAvg Entropy (Filtered)");
-		System.out.println(String.format("%d\t%d\t%f\t%f", original_map.size(), filtered_map.size(), avg_o_en, avg_f_en));
+		//System.out.println("Number of feature value (Original)\tNumber of feature value (Filtered)\tAvg Entropy (Original)\tAvg Entropy (Filtered)");
+		//System.out.println(String.format("%d\t%d\t%f\t%f", original_map.size(), filtered_map.size(), avg_o_en, avg_f_en));
 
 		// Apply FVS to the instances and push to
 		// TODO Comment this if not debug, or give IS_DEBUG options
@@ -166,6 +164,10 @@ public class FVS extends Filter {
 //			System.out.println(output.instance(i));
 			push(output.instance(i));
 		}
+		
+		original_map.clear();
+		filtered_map.clear();
+		fv_list.clear();
 
 		flushInput();
 		m_NewBatch = true;
@@ -177,25 +179,24 @@ public class FVS extends Filter {
 	private List<Double> getListEntropy(final Map<FV, Collection<FV>> map)
 	{
 		List<Double> result = new ArrayList<Double>();
-		for(Collection<FV> cfv: map.values())
+		for(FV fv : map.keySet())
 		{
-			for(FV fv : cfv)
-			{
-				result.add(fv.getEntropy());
-			}
+			result.add(fv.getEntropy());
 		}
 		return result;
 	}
 	
-	private double calculateAverageEntropy(final List<Double> list)
+	private double calculateAverageEntropy(final Map<FV, Collection<FV>> map)
 	{
 		double result = 0.0;
-		if(list.isEmpty()) return result;
-		for(Double d: list)
+		int count = 0;
+		for(FV fv : map.keySet())
 		{
-			result += d;
+			result += fv.getEntropy();
+			count++;
 		}
-		return result/list.size();
+		if(count == 0) return result;
+		return result/count;
 	}
 
 	private double[] calculateAverage(Instances inst) {
