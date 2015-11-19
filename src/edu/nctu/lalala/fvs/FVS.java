@@ -97,10 +97,6 @@ public class FVS extends Filter {
 				} catch (Exception e) {
 					value = ins.value(x);
 				}
-				// TODO Class label using String
-				// Class value as a double
-				// How about String?
-				// Not implemented yet
 				FV fv = new FV(x, value, ins.classValue());
 				fv.setNumLabels(numOfClassLabels);
 				if (!fv_list.put(fv, fv)) {
@@ -155,7 +151,6 @@ public class FVS extends Filter {
 		//System.out.println(String.format("%d\t%d\t%f\t%f", original_map.size(), filtered_map.size(), avg_o_en, avg_f_en));
 
 		// Apply FVS to the instances and push to
-		// TODO Comment this if not debug, or give IS_DEBUG options
 		Instances output = applyFVS(inst, filtered_map, substitution);
 		// System.out.println(inst.numInstances());
 		// System.out.println(output.numInstances());
@@ -266,38 +261,6 @@ public class FVS extends Filter {
 		// result.numAttributes());
 		return result;
 	}
-
-	// TODO Feature-Value Selection logic HERE
-	/**
-	 * Doing feature value selection by using specified algorithm (Threshold or
-	 * Correlation)
-	 * 
-	 * @param inst
-	 * @return
-	 */
-	// protected Instances process(Instances inst) {
-	// Instances result = new Instances(inst, 0);
-	// for (int i = 0; i < inst.numInstances(); i++) {
-	// Instance ins = inst.instance(i);
-	// for (int x = 0; x < ins.numAttributes(); x++) {
-	// Object value = null;
-	// try {
-	// value = ins.stringValue(x);
-	// } catch (Exception e) {
-	// value = ins.value(x);
-	// }
-	// FV fv = new FV(x, value);
-	// fv_list.put(fv, 1);
-	// }
-	// }
-	// for (Iterator<Entry<FV, Integer>> iterator =
-	// fv_list.entries().iterator(); iterator.hasNext();) {
-	// Entry<FV, Integer> entry = iterator.next();
-	// System.out.println(entry.getKey() + ":" + entry.getValue());
-	// }
-	//
-	// return result;
-	// }
 
 	/**
 	 * *************************************************************************

@@ -10,7 +10,6 @@ public class Value {
 	private static final double MAX_VALUE = 3000000000D;
 
 	public Value(String value) {
-		// TODO what if the range is from negative to negative
 		Pattern pattern = Pattern.compile("-?((\\d(\\.)*)+|inf)");
 		Matcher m = pattern.matcher(value);
 		int counter = 0;

@@ -103,9 +103,9 @@ public class Main {
 		if (IS_DEBUG)
 			System.err.println(lookupFolder);
 
-		ClassifierType type = ClassifierType.J48_Pruned;
+		ClassifierType type = ClassifierType.J48;
 		DiscretizationType dis_alg = DiscretizationType.Binning;
-		FVS_Algorithm fvs_alg = FVS_Algorithm.Threshold;
+		FVS_Algorithm fvs_alg = FVS_Algorithm.Random;
 
 		for (String datasetName : folder.list()) {
 			try {
