@@ -45,7 +45,7 @@ public class Main {
 	 */
 	private static final String REPORT_FORMAT = "%s\t%s\t%s\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\n";
 
-	private static final int RUN_REPETITION = 10;
+	private static final int RUN_REPETITION = 0;
 
 	private int CROSS_VALIDATION = 10;
 
@@ -105,7 +105,7 @@ public class Main {
 
 		ClassifierType type = ClassifierType.J48;
 		DiscretizationType dis_alg = DiscretizationType.Binning;
-		FVS_Algorithm fvs_alg = FVS_Algorithm.Random;
+		FVS_Algorithm fvs_alg = FVS_Algorithm.Correlation;
 
 		for (String datasetName : folder.list()) {
 			try {
