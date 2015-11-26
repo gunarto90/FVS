@@ -2,6 +2,7 @@ package edu.nctu.lalala.fvs;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -13,6 +14,7 @@ import java.util.Set;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 
+import edu.nctu.lalala.math.MathHelper;
 import weka.core.Capabilities;
 import weka.core.Capabilities.Capability;
 import weka.core.Instance;
@@ -109,37 +111,62 @@ public class FVS extends Filter {
 		}
 		// Creating Correlation Matrix if using Correlation Algorithm
 		Double[][] CM = new Double[numCols][numCols];
+		List<Double> corrValues = new ArrayList();
 		for (int i = 0; i < numCols; i++) {
 			for (int j = 0; j < numCols; j++) {
 				CM[i][j] = 0.0;
 			}
 		}
+		// Update CM values
 		if (algo == FVS_Algorithm.Correlation) {
 			for (int i = 0; i < numCols - 1; i++) {
 				for (int j = i + 1; j < numCols - 1; j++) {
 					CM[i][j] = calculateLinearCorrelation(inst, average, i, j);
 					CM[j][i] = CM[i][j]; // Correlation between x and y is the
 											// same with y and x
+					if (CM[i][j] != 0)
+						corrValues.add(CM[i][j]);
 				}
 			}
-		}
-		for (int i = 0; i < numCols; i++) {
-			for (int j = 0; j < numCols; j++) {
-				System.out.print(String.format("%.3f\t", CM[i][j]));
+			Collections.sort(corrValues);
+//			Double mean;
+//			Double stdev;
+//			Double[] q = new Double[3]; // Q1, Q2, Q3
+//			Double[] temp = new Double[corrValues.size()];
+//			temp = corrValues.toArray(temp);
+//			// Calculate mean, Q1~Q3
+//			mean = MathHelper.getInstance().calculateAverage(temp);
+//			stdev = MathHelper.getInstance().calculateStdev(mean, temp);
+//			q = MathHelper.getInstance().calculateQuartile(temp);
+//			System.out.println("Mean: " + mean);
+//			System.out.println("Stdev: " + stdev);
+//			System.out.println("Mean + Stdev: " + (mean + stdev));
+//			System.out.println("Mean - Stdev: " + (mean - stdev));
+//			System.out.println("Q1: " + q[0]);
+//			System.out.println("Q2: " + q[1]);
+//			System.out.println("Q3: " + q[2]);
+			// Print Correlation Matrices
+			for (int i = 0; i < numCols; i++) {
+				for (int j = 0; j < numCols; j++) {
+					System.out.print(String.format("%.3f\t", CM[i][j]));
+				}
+				System.out.println();
 			}
-			System.out.println();
 		}
 		// Remove possible feature values
 		Map<FV, Collection<FV>> original_map = fv_list.asMap();
 		// Default parameters
 		double percent_filter = 80; // Leave 20% fv left
 		double threshold = 0.5;
+		double topk = 0.1;
 		// Lookup on params
 		if (params.length > 0) {
 			if (algo == FVS_Algorithm.Random) {
 				percent_filter = params[0];
 			} else if (algo == FVS_Algorithm.Threshold) {
 				threshold = params[0];
+			} else if (algo == FVS_Algorithm.Correlation) {
+				topk = params[0];
 			}
 		}
 
@@ -158,7 +185,7 @@ public class FVS extends Filter {
 			filtered_map = applyThresholdRemoval(original_map, threshold);
 			break;
 		case Correlation:
-			filtered_map = applyCorrelationRemoval(original_map, CM);
+			filtered_map = applyCorrelationRemoval(original_map, topk, CM);
 			break;
 		default:
 			break;
@@ -240,25 +267,6 @@ public class FVS extends Filter {
 	}
 
 	/**
-	 * Calculate stdev
-	 * 
-	 * @param inst
-	 * @param average
-	 * @return
-	 */
-	private Double calculateStdev(Double average, Double... data) {
-		Double stdev = 0.0;
-		if(data.length>0)
-		{
-			for (int i = 0; i < data.length; i++) {
-				stdev += Math.pow(data[i]-average, 2);
-			}
-			stdev /= data.length;
-		}
-		return stdev;
-	}
-
-	/**
 	 * Calculate linear correlation between 2 columns Reference:
 	 * https://en.wikipedia.org/wiki/Pearson_product-
 	 * moment_correlation_coefficient
@@ -277,7 +285,7 @@ public class FVS extends Filter {
 		top = rootXiXbar = rootYiYbar = 0;
 		for (int i = 0; i < inst.numInstances(); i++) {
 			Instance ins = inst.instance(i);
-			if (ins != null && !Double.isNaN(ins.value(x)) && !Double.isNaN(ins.value(y)) ) {
+			if (ins != null && !Double.isNaN(ins.value(x)) && !Double.isNaN(ins.value(y))) {
 				top += (ins.value(x) - average[x]) * (ins.value(y) - average[y]);
 				rootXiXbar += Math.pow(ins.value(x) - average[x], 2);
 				rootYiYbar += Math.pow(ins.value(y) - average[y], 2);
@@ -396,6 +404,9 @@ public class FVS extends Filter {
 		Map<FV, Collection<FV>> result = new HashMap<FV, Collection<FV>>();
 		Iterator<Entry<FV, Collection<FV>>> iterator = fv_list.entrySet().iterator();
 		// Calculate entropy and frequency for each
+		List<Double> entropyList = new ArrayList();
+		Double mean, stdev;
+		Double q[];
 		while (iterator.hasNext()) {
 			Entry<FV, Collection<FV>> next = iterator.next();
 			FV key = next.getKey();
@@ -406,6 +417,8 @@ public class FVS extends Filter {
 				counter[idx]++;
 			}
 			key.setEntropy(calculateEntropy(counter, next.getValue().size()));
+			if (key.getEntropy() != Double.NaN)
+				entropyList.add(key.getEntropy());
 		}
 		result.putAll(fv_list);
 		// Apply removal
@@ -413,10 +426,25 @@ public class FVS extends Filter {
 			if (k.getEntropy() > threshold)
 				result.remove(k);
 		}
+		// See mean, Q1~Q3 values for entropy threshold
+		Double[] temp = new Double[entropyList.size()];
+		temp = entropyList.toArray(temp);
+		mean = MathHelper.getInstance().calculateAverage(temp);
+		stdev = MathHelper.getInstance().calculateStdev(mean, temp);
+		q = MathHelper.getInstance().calculateQuartile(temp);
+		System.out.println("Mean: " + mean);
+		System.out.println("Stdev: " + stdev);
+		System.out.println("Mean + Stdev: " + (mean + stdev));
+		System.out.println("Mean - Stdev: " + (mean - stdev));
+		System.out.println("Q1: " + q[0]);
+		System.out.println("Q2: " + q[1]);
+		System.out.println("Q3: " + q[2]);
 		return result;
 	}
 
-	public Map<FV, Collection<FV>> applyCorrelationRemoval(Map<FV, Collection<FV>> fv_list, Double[][] CM) {
+	// Instead of top-k, we select top-k percents data
+	public Map<FV, Collection<FV>> applyCorrelationRemoval(Map<FV, Collection<FV>> fv_list, double topk,
+			Double[][] CM) {
 		Map<FV, Collection<FV>> result = new HashMap<FV, Collection<FV>>();
 		result.putAll(fv_list);
 		return result;

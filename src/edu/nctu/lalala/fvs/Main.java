@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 
+import edu.nctu.lalala.math.MathHelper;
 import weka.classifiers.Classifier;
 import weka.classifiers.Evaluation;
 import weka.classifiers.functions.SMO;
@@ -45,7 +46,7 @@ public class Main {
 	 */
 	private static final String REPORT_FORMAT = "%s\t%s\t%s\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\n";
 
-	private static final int RUN_REPETITION = 0;
+	private static final int RUN_REPETITION = 10;
 
 	private int CROSS_VALIDATION = 10;
 
@@ -105,7 +106,7 @@ public class Main {
 
 		ClassifierType type = ClassifierType.J48;
 		DiscretizationType dis_alg = DiscretizationType.Binning;
-		FVS_Algorithm fvs_alg = FVS_Algorithm.Correlation;
+		FVS_Algorithm fvs_alg = FVS_Algorithm.Threshold;
 
 		for (String datasetName : folder.list()) {
 			try {
@@ -136,7 +137,8 @@ public class Main {
 				writeReport(REPORT_FOLDER, datasetName, discretized.classIndex(), o_eval, o_cl,
 						modelSize, double_param, "Original", type, dis_alg);
 				// System.out.println(o_cl.toString());
-				for (int i = 0; i <= RUN_REPETITION; i++) {
+				for (int i = 0; i <= RUN_REPETITION; i++) 
+				{
 					double_param = (double) i / RUN_REPETITION;
 					System.out.println(datasetName + " : " + double_param);
 					// Filter dataset using FVS algorithm
