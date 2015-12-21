@@ -106,7 +106,7 @@ public class Main {
 
 		ClassifierType type = ClassifierType.J48;
 		DiscretizationType dis_alg = DiscretizationType.Binning;
-		FVS_Algorithm fvs_alg = FVS_Algorithm.Threshold;
+		FVS_Algorithm fvs_alg = FVS_Algorithm.Correlation;
 
 		for (String datasetName : folder.list()) {
 			try {

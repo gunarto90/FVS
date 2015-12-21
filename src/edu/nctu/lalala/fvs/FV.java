@@ -10,7 +10,7 @@ import java.util.Objects;
  * @category Data Object
  *
  */
-public class FV {
+public class FV implements Comparable<FV> {
 	/**
 	 * Column index number
 	 */
@@ -115,5 +115,14 @@ public class FV {
 
 	public void setNumLabels(int numOfClassLabels) {
 		this.numOfClassLabels = numOfClassLabels;
+	}
+
+	@Override
+	public int compareTo(FV arg0) {
+		if(this.getEntropy() < arg0.getEntropy())
+			return -1;
+		else if(this.getEntropy() > arg0.getEntropy())
+			return 1;
+		else return 0;
 	}
 }
