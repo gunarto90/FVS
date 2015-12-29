@@ -22,7 +22,7 @@ import weka.core.Instances;
 import weka.filters.Filter;
 
 enum FVS_Algorithm {
-	Null, Random, Threshold, Correlation
+	Original, Random, Threshold, Correlation
 }
 
 /**
@@ -37,16 +37,24 @@ public class FVS extends Filter {
 	FVS_Algorithm algo;
 	Double[] params;
 	private int numInstances;
+	ThresholdType thr_alg = ThresholdType.Iteration;
 	// Map<FV, Integer> fv_list = new HashMap<>();
 
 	public FVS(int numInstances, Double... params) {
-		algo = FVS_Algorithm.Null;
+		algo = FVS_Algorithm.Original;
 		this.setNumInstances(numInstances);
 		this.params = params;
 	}
 
 	public FVS(FVS_Algorithm algo, int numInstances, Double... params) {
 		this.algo = algo;
+		this.setNumInstances(numInstances);
+		this.params = params;
+	}
+
+	public FVS(FVS_Algorithm algo, ThresholdType thr_alg, int numInstances, Double... params) {
+		this.algo = algo;
+		this.thr_alg = thr_alg;
 		this.setNumInstances(numInstances);
 		this.params = params;
 	}
@@ -159,7 +167,7 @@ public class FVS extends Filter {
 
 		// Apply removal based on Algorithm
 		switch (this.algo) {
-		case Null:
+		case Original:
 			filtered_map = applyRandomRemoval(original_map, 0);
 			break;
 		case Random:
@@ -386,19 +394,14 @@ public class FVS extends Filter {
 	 */
 	public Map<FV, Collection<FV>> applyThresholdRemoval(Map<FV, Collection<FV>> fv_list, double threshold) {
 		Map<FV, Collection<FV>> result = new HashMap<FV, Collection<FV>>();
-		generateEntropy(fv_list);
+		List<Double> entropies = generateEntropy(fv_list);
 		result.putAll(fv_list);
-		// Apply removal
-		for (FV k : fv_list.keySet()) {
-			if (k.getEntropy() > threshold)
-				result.remove(k);
-		}
 		// See mean, Q1~Q3 values for entropy threshold
-		// Double[] temp = new Double[entropyList.size()];
-		// temp = entropyList.toArray(temp);
-		// mean = MathHelper.getInstance().calculateAverage(temp);
-		// stdev = MathHelper.getInstance().calculateStdev(mean, temp);
-		// q = MathHelper.getInstance().calculateQuartile(temp);
+		Double[] temp = new Double[entropies.size()];
+		temp = entropies.toArray(temp);
+		Double mean = MathHelper.getInstance().calculateAverage(temp);
+		Double stdev = MathHelper.getInstance().calculateStdev(mean, temp);
+		Double[] q = MathHelper.getInstance().calculateQuartile(temp);
 		// System.out.println("Mean: " + mean);
 		// System.out.println("Stdev: " + stdev);
 		// System.out.println("Mean + Stdev: " + (mean + stdev));
@@ -406,6 +409,34 @@ public class FVS extends Filter {
 		// System.out.println("Q1: " + q[0]);
 		// System.out.println("Q2: " + q[1]);
 		// System.out.println("Q3: " + q[2]);
+		// threshold = mean + stdev; // Force using specified threshold
+		switch (thr_alg) {
+		case Mean:
+			threshold = mean;
+			break;
+		case MeanMin:
+			threshold = mean - stdev;
+			break;
+		case MeanPlus:
+			threshold = mean + stdev;
+			break;
+		case Q1:
+			threshold = q[0];
+			break;
+		case Q2:
+			threshold = q[1];
+			break;
+		case Q3:
+			threshold = q[2];
+			break;
+		default:
+			break;
+		}
+		// Apply removal
+		for (FV k : fv_list.keySet()) {
+			if (k.getEntropy() > threshold)
+				result.remove(k);
+		}
 		return result;
 	}
 
@@ -431,7 +462,30 @@ public class FVS extends Filter {
 		// System.out.println("Q2: " + q[1]);
 		// System.out.println("Q3: " + q[2]);
 		// Selecting correlation threshold
-		double corrThreshold = q[2]; // Use Q3 as corr threshold
+		double corrThreshold = q[1]; // Use Q3 / Q2 / Mean+Stdev as corr
+										// threshold
+		switch (thr_alg) {
+		case Mean:
+			corrThreshold = mean;
+			break;
+		case MeanMin:
+			corrThreshold = mean - stdev;
+			break;
+		case MeanPlus:
+			corrThreshold = mean + stdev;
+			break;
+		case Q1:
+			corrThreshold = q[0];
+			break;
+		case Q2:
+			corrThreshold = q[1];
+			break;
+		case Q3:
+			corrThreshold = q[2];
+			break;
+		default:
+			break;
+		}
 		/**
 		 * Create several list for each correlated features
 		 */
@@ -441,7 +495,8 @@ public class FVS extends Filter {
 		for (int i = 0; i < CM.length; i++) {
 			for (int j = i + 1; j < CM.length; j++) {
 				/**
-				 * For each correlated feature, put all FV into list and do selection based on top-k percent 
+				 * For each correlated feature, put all FV into list and do
+				 * selection based on top-k percent
 				 */
 				if (CM[i][j] >= corrThreshold) {
 					// Mark selectedColumns
@@ -461,10 +516,8 @@ public class FVS extends Filter {
 		/**
 		 * Add remaining columns which are not selected (not correlated)
 		 */
-		for(int i=0; i<selectedColumns.length; i++)
-		{
-			if(selectedColumns[i]==0)
-			{
+		for (int i = 0; i < selectedColumns.length; i++) {
+			if (selectedColumns[i] == 0) {
 				List<FV> list = new ArrayList<>();
 				for (FV fv : fvs) {
 					if (fv.getFeature() == i) {
@@ -477,35 +530,38 @@ public class FVS extends Filter {
 		/**
 		 * Merge all correlated FV set and non-correlated FV set
 		 */
-		for(List<FV> list: correlatedFV)
-		{
-			for(FV fv: list)
-			{
+		for (List<FV> list : correlatedFV) {
+			for (FV fv : list) {
 				result.put(fv, null);
 			}
 		}
 		/*
-		 * TODO Correlation FVS 
-		 * 1. Create several list for each correlated features 
-		 * 2. For each correlated feature, put all FV into list and do selection based on top-k percent 
-		 * 3. When doing selection, check on every list (because every correlated feature would have different list and non-correlated feature, would have a separate list). 
-		 * For example: there is 5 features A, B, C, D, and E. Then, correlated pairs are: A with B, A with C, A with D, B with D, and C with D. 
-		 * Then we would have several list for them: AB list, AC list, AD list, BD list, CD list, and E list. 
-		 * (E is a non-correlated feature, thus have a separate list by itself). 
-		 * 4. Evaluate the parameters: top-k percents and threshold selection (for correlation).
+		 * TODO Correlation FVS 1. Create several list for each correlated
+		 * features 2. For each correlated feature, put all FV into list and do
+		 * selection based on top-k percent 3. When doing selection, check on
+		 * every list (because every correlated feature would have different
+		 * list and non-correlated feature, would have a separate list). For
+		 * example: there is 5 features A, B, C, D, and E. Then, correlated
+		 * pairs are: A with B, A with C, A with D, B with D, and C with D. Then
+		 * we would have several list for them: AB list, AC list, AD list, BD
+		 * list, CD list, and E list. (E is a non-correlated feature, thus have
+		 * a separate list by itself). 4. Evaluate the parameters: top-k
+		 * percents and threshold selection (for correlation).
 		 */
 		return result;
 	}
 
 	private void selectSubsetTopKPercent(double topk, List<List<FV>> correlatedFV, List<FV> list) {
 		Collections.sort(list);
-		int limit = (int) Math.min((int)(list.size()*topk)+1, list.size()-1);	// Prevent out-of-size
-		limit = (int) Math.max(limit, 0);	// Prevent negative
+		int limit = (int) Math.min((int) (list.size() * topk) + 1, list.size() - 1); // Prevent
+																						// out-of-size
+		limit = (int) Math.max(limit, 0); // Prevent negative
 		list = list.subList(0, limit);
 		correlatedFV.add(list);
 	}
 
-	private void generateEntropy(Map<FV, Collection<FV>> fv_list) {
+	private List<Double> generateEntropy(Map<FV, Collection<FV>> fv_list) {
+		List<Double> entropies = new ArrayList();
 		Iterator<Entry<FV, Collection<FV>>> iterator = fv_list.entrySet().iterator();
 		while (iterator.hasNext()) {
 			Entry<FV, Collection<FV>> next = iterator.next();
@@ -517,7 +573,9 @@ public class FVS extends Filter {
 				counter[idx]++;
 			}
 			key.setEntropy(calculateEntropy(counter, next.getValue().size()));
+			entropies.add(key.getEntropy());
 		}
+		return entropies;
 	}
 
 	/**
