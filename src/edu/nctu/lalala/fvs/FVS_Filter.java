@@ -11,11 +11,14 @@ import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
 
-import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 
 import edu.nctu.lalala.enums.FVS_Algorithm;
 import edu.nctu.lalala.enums.ThresholdType;
+import edu.nctu.lalala.fvs.algorithm.CorrelationFVS;
+import edu.nctu.lalala.fvs.algorithm.EntropyFVS;
+import edu.nctu.lalala.fvs.algorithm.RandomFVS;
+import edu.nctu.lalala.fvs.interfaces.IFVS;
 import edu.nctu.lalala.util.MathHelper;
 import weka.core.Capabilities;
 import weka.core.Capabilities.Capability;
@@ -91,120 +94,48 @@ public class FVS_Filter extends Filter {
 			setOutputFormat(outFormat);
 		}
 
-		Multimap<FV, FV> fv_list = ArrayListMultimap.create();
+		// Initialization
 		Instances inst = getInputFormat();
-		Double[] average = calculateAverage(inst);
-		// double[] stdev = calculateStdev(inst, average);
-		int numOfClassLabels = inst.numClasses();
-		int numCols = 0;
-		// Instances outFormat = getOutputFormat();
-		for (int i = 0; i < inst.numInstances(); i++) {
-			Instance ins = inst.instance(i);
-			// Skip the class label
-			for (int x = 0; x < ins.numAttributes() - 1; x++) {
-				Object value = null;
-				numCols = ins.numAttributes();
-				try {
-					value = ins.stringValue(x);
-				} catch (Exception e) {
-					value = ins.value(x);
-				}
-				FV fv = new FV(x, value, ins.classValue());
-				fv.setNumLabels(numOfClassLabels);
-				if (!fv_list.put(fv, fv)) {
-					System.err.println("Couldn't put duplicates: " + fv);
-				}
-			}
-		}
-		// Creating Correlation Matrix if using Correlation Algorithm
-		Double[][] CM = new Double[numCols][numCols];
-		List<Double> corrValues = new ArrayList();
-		for (int i = 0; i < numCols; i++) {
-			for (int j = 0; j < numCols; j++) {
-				CM[i][j] = 0.0;
-			}
-		}
-		// Update CM values
-		if (algo == FVS_Algorithm.Correlation) {
-			for (int i = 0; i < numCols - 1; i++) {
-				for (int j = i + 1; j < numCols - 1; j++) {
-					CM[i][j] = calculateLinearCorrelation(inst, average, i, j);
-					CM[j][i] = CM[i][j]; // Correlation between x and y is the
-											// same with y and x
-					if (CM[i][j] != 0)
-						corrValues.add(CM[i][j]);
-				}
-			}
-			Collections.sort(corrValues);
-			// Print Correlation Matrices
-			// for (int i = 0; i < numCols; i++) {
-			// for (int j = 0; j < numCols; j++) {
-			// System.out.print(String.format("%.3f\t", CM[i][j]));
-			// }
-			// System.out.println();
-			// }
-		}
-		// Remove possible feature values
-		Map<FV, Collection<FV>> original_map = fv_list.asMap();
-		// Default parameters
-		double percent_filter = 80; // Leave 20% fv left
-		double threshold = 0.5;
-		double topk = 0.1;
-		// Lookup on params
-		if (params.length > 0) {
-			if (algo == FVS_Algorithm.Random) {
-				percent_filter = params[0];
-			} else if (algo == FVS_Algorithm.Threshold) {
-				threshold = params[0];
-			} else if (algo == FVS_Algorithm.Correlation) {
-				topk = params[0];
-			}
-		}
-
-		int total = (int) ((double) original_map.size() * percent_filter);
-		Map<FV, Collection<FV>> filtered_map = null;
-
+		Instances output = getOutputFormat();
+		IFVS fvs = null;
+		
 		// Apply removal based on Algorithm
 		switch (this.algo) {
 		case Original:
-			filtered_map = applyRandomRemoval(original_map, 0);
+			fvs = new RandomFVS();
+			fvs.input(inst, output, (Double)(0.0));
 			break;
 		case Random:
-			filtered_map = applyRandomRemoval(original_map, total);
+			fvs = new RandomFVS();
+			double percent_filter = 80.0;
+			if (params.length > 0) percent_filter = params[0];
+			fvs.input(inst, output, percent_filter);
 			break;
 		case Threshold:
-			filtered_map = applyThresholdRemoval(original_map, threshold);
+			fvs = new EntropyFVS(thr_alg);
+			Double threshold = 0.5;
+			if (params.length > 0) threshold = params[0];
+			fvs.input(inst, output, threshold);
 			break;
 		case Correlation:
-			filtered_map = applyCorrelationRemoval(original_map, topk, CM, corrValues);
+			fvs = new CorrelationFVS(thr_alg);
+			Double topk = 0.1;
+			if (params.length > 0) topk = params[0];
+			fvs.input(inst, output, topk);
 			break;
 		default:
+			fvs = new RandomFVS();
+			fvs.input(inst, output, (Double)(0.0));
 			break;
 		}
-		// printFVs(fv_list, fv_list.asMap());
-		// printFVs(reduced_fv_list, reduced_fv_list.asMap());
-		// double avg_o_en = calculateAverageEntropy(original_map);
-		// double avg_f_en = calculateAverageEntropy(filtered_map);
-
-		// System.out.println("Number of feature value (Original)\tNumber of
-		// feature value (Filtered)\tAvg Entropy (Original)\tAvg Entropy
-		// (Filtered)");
-		// System.out.println(String.format("%d\t%d\t%f\t%f",
-		// original_map.size(), filtered_map.size(), avg_o_en, avg_f_en));
-
-		// Apply FVS to the instances and push to
-		Instances output = applyFVS(inst, filtered_map, average);
-		// System.out.println(inst.numInstances());
-		// System.out.println(output.numInstances());
+		
+		fvs.applyFVS();
+		output = fvs.output();
 
 		for (int i = 0; i < output.numInstances(); i++) {
 			// System.out.println(output.instance(i));
 			push(output.instance(i));
 		}
-
-		original_map.clear();
-		filtered_map.clear();
-		fv_list.clear();
 
 		flushInput();
 		m_NewBatch = true;
@@ -231,64 +162,6 @@ public class FVS_Filter extends Filter {
 		if (count == 0)
 			return result;
 		return result / count;
-	}
-
-	/**
-	 * Calculate average of every columns
-	 * 
-	 * @param inst
-	 * @return
-	 */
-	private Double[] calculateAverage(Instances inst) {
-		Double[] average = new Double[inst.numAttributes() - 1];
-		for (int i = 0; i < inst.numAttributes() - 1; i++) {
-			average[i] = 0.0;
-		}
-		for (int i = 0; i < inst.numInstances(); i++) {
-			for (int x = 0; x < inst.instance(i).numAttributes() - 1; x++) {
-				Instance ins = inst.instance(i);
-				if (ins != null && !Double.isNaN(ins.value(x)))
-					average[x] += ins.value(x);
-			}
-		}
-		for (int i = 0; i < inst.numAttributes() - 1; i++) {
-			average[i] /= inst.numInstances();
-		}
-		return average;
-	}
-
-	/**
-	 * Calculate linear correlation between 2 columns Reference:
-	 * https://en.wikipedia.org/wiki/Pearson_product-
-	 * moment_correlation_coefficient
-	 * 
-	 * @param inst
-	 * @param average
-	 * @param x
-	 *            Column 1
-	 * @param y
-	 *            Column 2
-	 * @return
-	 */
-	private Double calculateLinearCorrelation(Instances inst, Double[] average, int x, int y) {
-		double corr = 0;
-		double top, rootXiXbar, rootYiYbar, bot;
-		top = rootXiXbar = rootYiYbar = 0;
-		for (int i = 0; i < inst.numInstances(); i++) {
-			Instance ins = inst.instance(i);
-			if (ins != null && !Double.isNaN(ins.value(x)) && !Double.isNaN(ins.value(y))) {
-				top += (ins.value(x) - average[x]) * (ins.value(y) - average[y]);
-				rootXiXbar += Math.pow(ins.value(x) - average[x], 2);
-				rootYiYbar += Math.pow(ins.value(y) - average[y], 2);
-			}
-		}
-		rootXiXbar = Math.sqrt(rootXiXbar);
-		rootYiYbar = Math.sqrt(rootYiYbar);
-		bot = rootXiXbar * rootYiYbar;
-		if (bot != 0) {
-			corr = top / bot;
-		}
-		return corr;
 	}
 
 	private void printFVs(Multimap<FV, FV> reduced_fv_list, Map<FV, Collection<FV>> map) {
