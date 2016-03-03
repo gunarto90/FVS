@@ -14,16 +14,15 @@ import java.util.Set;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 
-import edu.nctu.lalala.math.MathHelper;
+import edu.nctu.lalala.enums.FVS_Algorithm;
+import edu.nctu.lalala.enums.ThresholdType;
+import edu.nctu.lalala.util.MathHelper;
 import weka.core.Capabilities;
 import weka.core.Capabilities.Capability;
 import weka.core.Instance;
 import weka.core.Instances;
 import weka.filters.Filter;
 
-enum FVS_Algorithm {
-	Original, Random, Threshold, Correlation
-}
 
 /**
  * 
@@ -33,26 +32,26 @@ enum FVS_Algorithm {
  * @see Reference:
  *      https://weka.wikispaces.com/Writing+your+own+Filter+(post+3.5.3)
  */
-public class FVS extends Filter {
+public class FVS_Filter extends Filter {
 	FVS_Algorithm algo;
 	Double[] params;
 	private int numInstances;
 	ThresholdType thr_alg = ThresholdType.Iteration;
 	// Map<FV, Integer> fv_list = new HashMap<>();
 
-	public FVS(int numInstances, Double... params) {
+	public FVS_Filter(int numInstances, Double... params) {
 		algo = FVS_Algorithm.Original;
 		this.setNumInstances(numInstances);
 		this.params = params;
 	}
 
-	public FVS(FVS_Algorithm algo, int numInstances, Double... params) {
+	public FVS_Filter(FVS_Algorithm algo, int numInstances, Double... params) {
 		this.algo = algo;
 		this.setNumInstances(numInstances);
 		this.params = params;
 	}
 
-	public FVS(FVS_Algorithm algo, ThresholdType thr_alg, int numInstances, Double... params) {
+	public FVS_Filter(FVS_Algorithm algo, ThresholdType thr_alg, int numInstances, Double... params) {
 		this.algo = algo;
 		this.thr_alg = thr_alg;
 		this.setNumInstances(numInstances);

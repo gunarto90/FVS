@@ -1,10 +1,14 @@
-package edu.nctu.lalala.fvs;
+package edu.nctu.lalala.main;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 
-import edu.nctu.lalala.math.MathHelper;
+import edu.nctu.lalala.enums.ClassifierType;
+import edu.nctu.lalala.enums.DiscretizationType;
+import edu.nctu.lalala.enums.FVS_Algorithm;
+import edu.nctu.lalala.enums.ThresholdType;
+import edu.nctu.lalala.fvs.FVS_Filter;
 import weka.classifiers.Classifier;
 import weka.classifiers.Evaluation;
 import weka.classifiers.functions.SMO;
@@ -12,22 +16,9 @@ import weka.classifiers.rules.JRip;
 import weka.classifiers.trees.DecisionStump;
 import weka.classifiers.trees.J48;
 import weka.core.Debug.Random;
-import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.converters.ConverterUtils.DataSource;
 import weka.filters.Filter;
-
-enum ClassifierType {
-	J48, JRip, SMO, J48_Pruned, DecisionStump
-}
-
-enum DiscretizationType {
-	Binning, MDL
-}
-
-enum ThresholdType {
-	Iteration, Q3, Q2, Q1, Mean, MeanPlus, MeanMin
-}
 
 @SuppressWarnings("unused")
 public class Main {
@@ -333,7 +324,7 @@ public class Main {
 	private Instances featureValueSelection(Instances data, FVS_Algorithm algo, ThresholdType thr_alg, int numInstances,
 			Double... params) {
 		Instances result = null;
-		Filter filter = new FVS(algo, thr_alg, numInstances, params);
+		Filter filter = new FVS_Filter(algo, thr_alg, numInstances, params);
 		try {
 			if (filter == null)
 				return null;

@@ -1,4 +1,4 @@
-package edu.nctu.lalala.math;
+package edu.nctu.lalala.util;
 
 public class MathHelper {
 	private MathHelper() {
