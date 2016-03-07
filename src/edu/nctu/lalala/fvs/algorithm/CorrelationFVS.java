@@ -4,18 +4,35 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import edu.nctu.lalala.enums.ThresholdType;
 import edu.nctu.lalala.fvs.CorrelationMatrix;
 import edu.nctu.lalala.fvs.FV;
 import edu.nctu.lalala.fvs.interfaces.IFVS;
 import edu.nctu.lalala.util.FVSHelper;
+import weka.core.Instance;
 import weka.core.Instances;
 
 public class CorrelationFVS implements IFVS {
+
+	class XYPair {
+		public int x, y;
+
+		public XYPair(int x, int y) {
+			this.x = x;
+			this.y = y;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			XYPair other = (XYPair) obj;
+			return this.x == other.x && this.y == other.y;
+		}
+	}
+
 	Instances inst;
 	Instances output;
 	Map<FV, Collection<FV>> fv_list;
@@ -30,6 +47,7 @@ public class CorrelationFVS implements IFVS {
 		this.thr_alg = thr_alg;
 		this.filtered_fv = new HashMap<FV, Collection<FV>>();
 	}
+
 	@Override
 	public void input(Instances inst, Instances output, Object... params) {
 		this.inst = inst;
@@ -38,6 +56,7 @@ public class CorrelationFVS implements IFVS {
 		this.topk = (Double) params[0];
 		preprocessing(inst);
 	}
+
 	private void preprocessing(Instances inst) {
 		CorrelationMatrix cm = FVSHelper.getInstance().generateCorrelationMatrix(inst);
 		this.CM = cm.getCM();
@@ -48,71 +67,28 @@ public class CorrelationFVS implements IFVS {
 		FVSHelper.getInstance().generateEntropy(fv_list, inst.numInstances());
 	}
 
+	/**
+	 * Correlation FVS 1. Create several list for each correlated features 2.
+	 * For each correlated feature, put all FV into list and do selection based
+	 * on top-k percent 3. When doing selection, check on every list (because
+	 * every correlated feature would have different list and non-correlated
+	 * feature, would have a separate list). For example: there is 5 features A,
+	 * B, C, D, and E. Then, correlated pairs are: A with B, A with C, A with D,
+	 * B with D, and C with D. Then we would have several list for them: AB
+	 * list, AC list, AD list, BD list, CD list, and E list. (E is a
+	 * non-correlated feature, thus have a separate list by itself). 4. Evaluate
+	 * the parameters: top-k percents and threshold selection (for correlation).
+	 */
 	@Override
 	public void applyFVS() {
 		this.filtered_fv = new HashMap<FV, Collection<FV>>();
-		/**
-		 * Create several list for each correlated features
-		 */
-		List<List<FV>> correlatedFV = new ArrayList<>();
-		Set<FV> fvs = fv_list.keySet();
-		int[] selectedColumns = new int[CM.length];
-		for (int i = 0; i < CM.length; i++) {
-			for (int j = i + 1; j < CM.length; j++) {
-				/**
-				 * For each correlated feature, put all FV into list and do
-				 * selection based on top-k percent
-				 */
-				if (CM[i][j] >= corrThreshold) {
-					// Mark selectedColumns
-					selectedColumns[i] = 1;
-					selectedColumns[j] = 0;
-					// Add into list
-					List<FV> list = new ArrayList<>();
-					for (FV fv : fvs) {
-						if (fv.getFeature() == i || fv.getFeature() == j) {
-							list.add(fv);
-						}
-					}
-					selectSubsetTopKPercent(topk, correlatedFV, list);
-				}
-			}
-		}
-		/**
-		 * Add remaining columns which are not selected (not correlated)
-		 */
-		for (int i = 0; i < selectedColumns.length; i++) {
-			if (selectedColumns[i] == 0) {
-				List<FV> list = new ArrayList<>();
-				for (FV fv : fvs) {
-					if (fv.getFeature() == i) {
-						list.add(fv);
-					}
-				}
-				selectSubsetTopKPercent(topk, correlatedFV, list);
-			}
-		}
-		/**
-		 * Merge all correlated FV set and non-correlated FV set
-		 */
+		List<List<FV>> correlatedFV = generateCorrelatedFV(this.inst);
 		for (List<FV> list : correlatedFV) {
-			for (FV fv : list) {
+			List<FV> subset = selectSubsetTopKPercent(topk, list);
+			for (FV fv : subset) {
 				filtered_fv.put(fv, null);
 			}
 		}
-		/*
-		 * TODO Correlation FVS 1. Create several list for each correlated
-		 * features 2. For each correlated feature, put all FV into list and do
-		 * selection based on top-k percent 3. When doing selection, check on
-		 * every list (because every correlated feature would have different
-		 * list and non-correlated feature, would have a separate list). For
-		 * example: there is 5 features A, B, C, D, and E. Then, correlated
-		 * pairs are: A with B, A with C, A with D, B with D, and C with D. Then
-		 * we would have several list for them: AB list, AC list, AD list, BD
-		 * list, CD list, and E list. (E is a non-correlated feature, thus have
-		 * a separate list by itself). 4. Evaluate the parameters: top-k
-		 * percents and threshold selection (for correlation).
-		 */
 	}
 
 	@Override
@@ -121,12 +97,96 @@ public class CorrelationFVS implements IFVS {
 		return output;
 	}
 
-	private void selectSubsetTopKPercent(double topk, List<List<FV>> correlatedFV, List<FV> list) {
+	private List<FV> selectSubsetTopKPercent(double topk, List<FV> input) {
+		// Lookup these fv from fvlist (query the entropy values)
+		List<FV> list = new ArrayList<>();
+		for (FV fv : input) {
+			Collection<FV> col = fv_list.get(fv);
+			if (col==null || col.isEmpty()) {
+				continue;
+			}
+			Iterator<FV> iter = col.iterator();
+			if (iter.hasNext()) {
+				list.add(iter.next());
+			}
+		}
+		List<FV> result = new ArrayList<>();
 		Collections.sort(list);
-		int limit = (int) Math.min((int) (list.size() * topk) + 1, list.size() - 1); // Prevent
-																						// out-of-size
+		// Prevent out of size
+		int limit = (int) Math.min((int) (list.size() * topk) + 1, list.size() - 1);
 		limit = (int) Math.max(limit, 0); // Prevent negative
 		list = list.subList(0, limit);
-		correlatedFV.add(list);
+		// Put all of remaining FVs into result
+		for (FV fv : list) {
+			if (!result.contains(fv))
+				result.add(fv);
+		}
+		return result;
+	}
+
+	/**
+	 * Correlated feature-values are generated by observing two factors:
+	 * correlation in the feature and appearance in the instances. If two
+	 * features are correlated and the values in the respective features are
+	 * correlated, then these values are correlated each other.
+	 * 
+	 * @return
+	 */
+	private List<List<FV>> generateCorrelatedFV(Instances inst) {
+		// Create fxf list for each correlated features
+		List<List<FV>> correlatedFV = new ArrayList<>();
+		// Lookup correlation matrix to create list of correlated features
+		Map<Integer, Integer> featureUsed = new HashMap<>();
+		List<XYPair> correlatedFeatures = new ArrayList<>();
+		for (int i = 0; i < CM.length; i++) {
+			for (int j = i + 1; j < CM.length; j++) {
+				if (CM[i][j] >= corrThreshold) {
+					featureUsed.put(i, 1);
+					featureUsed.put(j, 1);
+					correlatedFeatures.add(new XYPair(i, j));
+				}
+			}
+		}
+		// Iterate over all instances to create correlated lists
+		List<FV> uncorrelatedFVs = new ArrayList<>();
+		for (int x = 0; x < inst.numInstances(); x++) {
+			Instance in = inst.instance(x);
+			// Lookup correlation matrix
+			for (XYPair p : correlatedFeatures) {
+				FV fv1 = new FV(p.x, in.stringValue(p.x), in.classValue());
+				FV fv2 = new FV(p.y, in.stringValue(p.y), in.classValue());
+				boolean found = false;
+				for (int i = 0; i < correlatedFV.size(); i++) {
+					if (found)
+						break;
+					List<FV> list = correlatedFV.get(i);
+					// Add missing correlated fv
+					if (list.contains(fv1)) {
+						list.add(fv2);
+						found = true;
+					} else if (list.contains(fv2)) {
+						list.add(fv1);
+						found = true;
+					}
+				}
+				if (!found) {
+					List<FV> list = new ArrayList<>();
+					list.add(fv1);
+					list.add(fv2);
+					correlatedFV.add(list);
+				}
+			}
+			// Uncorrelated features
+			for (int i = 0; i < CM.length; i++) {
+				if (featureUsed.get(i) == null) {
+					FV fv = new FV(i, in.value(i), in.classValue());
+					if (!uncorrelatedFVs.contains(fv))
+						uncorrelatedFVs.add(fv);
+				}
+			}
+		}
+		correlatedFV.add(uncorrelatedFVs);
+		//System.out.println("Correlated FV length: " + correlatedFV.size());
+		return correlatedFV;
 	}
 }
