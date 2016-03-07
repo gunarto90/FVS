@@ -12,6 +12,10 @@ import java.util.Objects;
  */
 public class FV implements Comparable<FV> {
 	/**
+	 * Instance index number
+	 */
+	private int index;
+	/**
 	 * Column index number
 	 */
 	private int feature;
@@ -65,7 +69,8 @@ public class FV implements Comparable<FV> {
 
 	@Override
 	public String toString() {
-		String output = String.format("FV{%-3d : %15s (%2.0f) [E:%.3f] [F:%.3f]} ", this.feature, this.value, this.label, getEntropy(), getFrequency());
+		//String output = String.format("FV{%-3d : %15s (%2.0f) [E:%.3f] [F:%.3f]} ", this.feature, this.value, this.label, getEntropy(), getFrequency());
+		String output = String.format("[%d:%s]", this.feature, this.value);
 		return output;
 	}
 
