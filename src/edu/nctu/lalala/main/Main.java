@@ -3,6 +3,7 @@ package edu.nctu.lalala.main;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Date;
 
 import edu.nctu.lalala.enums.ClassifierType;
 import edu.nctu.lalala.enums.DiscretizationType;
@@ -102,10 +103,6 @@ public class Main {
 			System.err.println(lookupFolder);
 
 		// TODO Change Variables here
-		// ClassifierType type = ClassifierType.J48_Pruned;
-		// DiscretizationType dis_alg = DiscretizationType.Binning;
-		// FVS_Algorithm fvs_alg = FVS_Algorithm.Threshold;
-		// ThresholdType thr_alg = ThresholdType.MeanMin;
 		ClassifierType[] cts = { ClassifierType.J48, ClassifierType.J48_Pruned, ClassifierType.DecisionStump };
 		DiscretizationType[] dis = { DiscretizationType.Binning, DiscretizationType.MDL };
 		ThresholdType[] tts = { ThresholdType.Iteration, ThresholdType.Q1, ThresholdType.Q2, ThresholdType.Q3,
@@ -123,12 +120,14 @@ public class Main {
 						// For each file
 						for (String datasetName : folder.list()) {
 							try {
-								if(fvs_alg==FVS_Algorithm.Random && thr_alg!=ThresholdType.Iteration)
+								if (fvs_alg == FVS_Algorithm.Random && thr_alg != ThresholdType.Iteration)
 									continue;
-								if(fvs_alg==FVS_Algorithm.Correlation && thr_alg==ThresholdType.Iteration)
+								if (fvs_alg == FVS_Algorithm.Correlation && thr_alg == ThresholdType.Iteration)
 									continue;
 								int run = RUN_REPETITION;
 								double double_param = 0.0;
+								if (fvs_alg == FVS_Algorithm.Correlation && (double_param == 1 || double_param == 0))
+									continue;
 								// Load original data
 								Instances data = loadData(lookupFolder + datasetName);
 								data.deleteAttributeAt(0); // delete timestamp
@@ -222,7 +221,10 @@ public class Main {
 		source = new DataSource(file);
 
 		if (IS_DEBUG)
+		{
 			System.err.println(file);
+			System.err.println(new Date().toString());
+		}
 		Instances data = source.getDataSet();
 		// setting class attribute if the data format does not provide
 		// this information. For example, the XRFF format saves the
