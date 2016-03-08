@@ -103,11 +103,17 @@ public class Main {
 			System.err.println(lookupFolder);
 
 		// TODO Change Variables here
-		ClassifierType[] cts = { ClassifierType.J48, ClassifierType.J48_Pruned, ClassifierType.DecisionStump };
-		DiscretizationType[] dis = { DiscretizationType.Binning, DiscretizationType.MDL };
-		ThresholdType[] tts = { ThresholdType.Iteration, ThresholdType.Q1, ThresholdType.Q2, ThresholdType.Q3,
-				ThresholdType.Mean, ThresholdType.MeanPlus, ThresholdType.MeanMin };
-		FVS_Algorithm[] fas = { FVS_Algorithm.Threshold, FVS_Algorithm.Random, FVS_Algorithm.Correlation };
+//		ClassifierType[] cts = { ClassifierType.J48, ClassifierType.J48_Pruned, ClassifierType.DecisionStump };
+//		DiscretizationType[] dis = { DiscretizationType.Binning, DiscretizationType.MDL };
+//		ThresholdType[] tts = { ThresholdType.Iteration, ThresholdType.Q1, ThresholdType.Q2, ThresholdType.Q3,
+//				ThresholdType.Mean, ThresholdType.MeanPlus, ThresholdType.MeanMin };
+//		FVS_Algorithm[] fas = { FVS_Algorithm.Threshold, FVS_Algorithm.Random, FVS_Algorithm.Correlation };
+
+		// Custom
+		ClassifierType[] cts = { ClassifierType.J48, ClassifierType.J48_Pruned};
+		DiscretizationType[] dis = { DiscretizationType.Binning, DiscretizationType.MDL};
+		ThresholdType[] tts = { ThresholdType.Q2 };
+		FVS_Algorithm[] fas = { FVS_Algorithm.Correlation };
 
 		// For each classifier
 		for (ClassifierType type : cts) {
