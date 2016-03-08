@@ -3,6 +3,7 @@ package edu.nctu.lalala.main;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Date;
 
 import edu.nctu.lalala.enums.ClassifierType;
 import edu.nctu.lalala.enums.DiscretizationType;
@@ -101,13 +102,13 @@ public class Main {
 		if (IS_DEBUG)
 			System.err.println(lookupFolder);
 
-		// Standard parameters
+		// TODO Change Variables here
 //		ClassifierType[] cts = { ClassifierType.J48, ClassifierType.J48_Pruned, ClassifierType.DecisionStump };
-		//DiscretizationType[] dis = { DiscretizationType.Binning, DiscretizationType.MDL };
+//		DiscretizationType[] dis = { DiscretizationType.Binning, DiscretizationType.MDL };
 //		ThresholdType[] tts = { ThresholdType.Iteration, ThresholdType.Q1, ThresholdType.Q2, ThresholdType.Q3,
 //				ThresholdType.Mean, ThresholdType.MeanPlus, ThresholdType.MeanMin };
 //		FVS_Algorithm[] fas = { FVS_Algorithm.Threshold, FVS_Algorithm.Random, FVS_Algorithm.Correlation };
-		
+
 		// Custom
 		ClassifierType[] cts = { ClassifierType.J48, ClassifierType.J48_Pruned};
 		DiscretizationType[] dis = { DiscretizationType.Binning, DiscretizationType.MDL};
@@ -125,12 +126,14 @@ public class Main {
 						// For each file
 						for (String datasetName : folder.list()) {
 							try {
-								if(fvs_alg==FVS_Algorithm.Random && thr_alg!=ThresholdType.Iteration)
+								if (fvs_alg == FVS_Algorithm.Random && thr_alg != ThresholdType.Iteration)
 									continue;
-								if(fvs_alg==FVS_Algorithm.Correlation && thr_alg==ThresholdType.Iteration)
+								if (fvs_alg == FVS_Algorithm.Correlation && thr_alg == ThresholdType.Iteration)
 									continue;
 								int run = RUN_REPETITION;
 								double double_param = 0.0;
+								if (fvs_alg == FVS_Algorithm.Correlation && (double_param == 1 || double_param == 0))
+									continue;
 								// Load original data
 								Instances data = loadData(lookupFolder + datasetName);
 								data.deleteAttributeAt(0); // delete timestamp
@@ -224,7 +227,10 @@ public class Main {
 		source = new DataSource(file);
 
 		if (IS_DEBUG)
+		{
 			System.err.println(file);
+			System.err.println(new Date().toString());
+		}
 		Instances data = source.getDataSet();
 		// setting class attribute if the data format does not provide
 		// this information. For example, the XRFF format saves the
