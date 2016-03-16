@@ -1,0 +1,1 @@
+To run the experiments, please copy arff files from folder "all" to folder "run"
