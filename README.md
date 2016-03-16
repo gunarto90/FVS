@@ -1,5 +1,5 @@
 # FVS
-Feature Value Selection by Lalala
+Feature Value Selection by Gunarto Sindoro Njoo (~Lalala~)
 
 Following option need to be set before run the application
 <b> Java VM Option </b> -Xmx4g
