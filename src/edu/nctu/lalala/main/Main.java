@@ -7,9 +7,11 @@ import java.util.Date;
 
 import edu.nctu.lalala.enums.ClassifierType;
 import edu.nctu.lalala.enums.DiscretizationType;
-import edu.nctu.lalala.enums.FVS_Algorithm;
+import edu.nctu.lalala.enums.PreprocessingType;
+import edu.nctu.lalala.enums.Preprocessing_Algorithm;
 import edu.nctu.lalala.enums.ThresholdType;
 import edu.nctu.lalala.fvs.FVS_Filter;
+import weka.attributeSelection.CfsSubsetEval;
 import weka.classifiers.Classifier;
 import weka.classifiers.Evaluation;
 import weka.classifiers.functions.SMO;
@@ -20,6 +22,7 @@ import weka.core.Debug.Random;
 import weka.core.Instances;
 import weka.core.converters.ConverterUtils.DataSource;
 import weka.filters.Filter;
+import weka.filters.supervised.attribute.AttributeSelection;
 
 @SuppressWarnings("unused")
 // Updated March 3rd, 2016
@@ -103,22 +106,27 @@ public class Main {
 			System.err.println(lookupFolder);
 
 		// TODO Change Variables here
-//		ClassifierType[] cts = { ClassifierType.J48, ClassifierType.J48_Pruned, ClassifierType.DecisionStump };
-//		DiscretizationType[] dis = { DiscretizationType.Binning, DiscretizationType.MDL };
-//		ThresholdType[] tts = { ThresholdType.Iteration, ThresholdType.Q1, ThresholdType.Q2, ThresholdType.Q3,
-//				ThresholdType.Mean, ThresholdType.MeanPlus, ThresholdType.MeanMin };
-//		FVS_Algorithm[] fas = { FVS_Algorithm.Threshold, FVS_Algorithm.Random, FVS_Algorithm.Correlation };
+		// ClassifierType[] cts = { ClassifierType.J48,
+		// ClassifierType.J48_Pruned, ClassifierType.DecisionStump };
+		// DiscretizationType[] dis = { DiscretizationType.Binning,
+		// DiscretizationType.MDL };
+		// ThresholdType[] tts = { ThresholdType.Iteration, ThresholdType.Q1,
+		// ThresholdType.Q2, ThresholdType.Q3,
+		// ThresholdType.Mean, ThresholdType.MeanPlus, ThresholdType.MeanMin };
+		// FVS_Algorithm[] fas = { FVS_Algorithm.Threshold,
+		// FVS_Algorithm.Random, FVS_Algorithm.Correlation };
 
 		// Custom
-		ClassifierType[] cts = { ClassifierType.J48, ClassifierType.J48_Pruned};
-		DiscretizationType[] dis = { DiscretizationType.Binning, DiscretizationType.MDL};
-		ThresholdType[] tts = { ThresholdType.Q2 };
-		FVS_Algorithm[] fas = { FVS_Algorithm.Correlation };
-
+		PreprocessingType pt;
+		ClassifierType[] cts = { ClassifierType.J48, ClassifierType.J48_Pruned };
+		DiscretizationType[] dis = { DiscretizationType.Binning, DiscretizationType.MDL };
+		ThresholdType[] tts = { ThresholdType.NA };
+		Preprocessing_Algorithm[] fas = { Preprocessing_Algorithm.CFS };
 		// For each classifier
 		for (ClassifierType type : cts) {
 			// For each fvs
-			for (FVS_Algorithm fvs_alg : fas) {
+			for (Preprocessing_Algorithm p_alg : fas) {
+				pt = getPreprocessType(p_alg);
 				// For each discretization
 				for (DiscretizationType dis_alg : dis) {
 					// For each threshold type
@@ -126,13 +134,14 @@ public class Main {
 						// For each file
 						for (String datasetName : folder.list()) {
 							try {
-								if (fvs_alg == FVS_Algorithm.Random && thr_alg != ThresholdType.Iteration)
+								if (p_alg == Preprocessing_Algorithm.Random && thr_alg != ThresholdType.Iteration)
 									continue;
-								if (fvs_alg == FVS_Algorithm.Correlation && thr_alg == ThresholdType.Iteration)
+								if (p_alg == Preprocessing_Algorithm.Correlation && thr_alg == ThresholdType.Iteration)
 									continue;
 								int run = RUN_REPETITION;
 								double double_param = 0.0;
-								if (fvs_alg == FVS_Algorithm.Correlation && (double_param == 1 || double_param == 0))
+								if (p_alg == Preprocessing_Algorithm.Correlation
+										&& (double_param == 1 || double_param == 0))
 									continue;
 								// Load original data
 								Instances data = loadData(lookupFolder + datasetName);
@@ -163,31 +172,60 @@ public class Main {
 								// discretized.classIndex(),
 								// "Original");
 								writeReport(REPORT_FOLDER, datasetName, discretized.classIndex(), o_eval, o_cl,
-										modelSize, double_param, FVS_Algorithm.Original, type, dis_alg, thr_alg, rule1);
+										modelSize, double_param, Preprocessing_Algorithm.Original, type, dis_alg,
+										thr_alg, rule1);
 								// System.out.println(o_cl.toString());
-								if (fvs_alg == FVS_Algorithm.Threshold && thr_alg != ThresholdType.Iteration)
+								if (p_alg == Preprocessing_Algorithm.Threshold && thr_alg != ThresholdType.Iteration)
 									run = 0; // No need to iterate
 								if (type == ClassifierType.DecisionStump)
 									run = -1;
-								for (int i = run; i >= 0; i--) {
-									double_param = (double) i / run;
-									System.out.println(datasetName + " : " + double_param);
-									// Filter dataset using FVS algorithm
-									Instances filtered = featureValueSelection(discretized, fvs_alg, thr_alg,
-											discretized.numInstances(), double_param);
+								if (pt == PreprocessingType.FVS) {
+									for (int i = run; i >= 0; i--) {
+										double_param = (double) i / run;
+										System.out.println(datasetName + " : " + double_param);
+										// Filter dataset using FVS algorithm
+										Instances filtered = featureValueSelection(discretized, p_alg, thr_alg,
+												discretized.numInstances(), double_param);
+										// Build classifier based on filtered data
+										Classifier f_cl = buildClassifier(filtered, type);
+										// Evaluate the dataset
+										Evaluation f_eval = new Evaluation(filtered);
+										// Cross validate dataset
+										f_eval.crossValidateModel(f_cl, filtered, CROSS_VALIDATION, new Random(1));
+										// if (IS_DEBUG)
+										// System.out.println(cl.toString());
+										// printEvaluation(f_eval, null,
+										// filtered.classIndex(),
+										// "Filtered");
+										// Compare model size
+
+										try {
+											b = (J48) f_cl;
+											modelSize = (double) b.measureNumLeaves() / a.measureNumLeaves();
+											rule2 = (int) b.measureNumRules();
+										} catch (Exception e) {
+
+										}
+										// writeReport(REPORT_FOLDER,
+										// datasetName,
+										// filtered.classIndex(), f_eval, f_cl,
+										// (double) f_cl.toString().length() /
+										// base_model_size,
+										// double_param, fvs_alg, type,
+										// dis_alg);
+										writeReport(REPORT_FOLDER, datasetName, filtered.classIndex(), f_eval, f_cl,
+												modelSize, double_param, p_alg, type, dis_alg, thr_alg, rule2);
+										filtered.delete();
+										System.gc();
+									}
+								} else {
+									Instances filtered = applySelection(discretized, p_alg);
 									// Build classifier based on filtered data
 									Classifier f_cl = buildClassifier(filtered, type);
 									// Evaluate the dataset
 									Evaluation f_eval = new Evaluation(filtered);
 									// Cross validate dataset
 									f_eval.crossValidateModel(f_cl, filtered, CROSS_VALIDATION, new Random(1));
-									// if (IS_DEBUG)
-									// System.out.println(cl.toString());
-									// printEvaluation(f_eval, null,
-									// filtered.classIndex(),
-									// "Filtered");
-									// Compare model size
-
 									try {
 										b = (J48) f_cl;
 										modelSize = (double) b.measureNumLeaves() / a.measureNumLeaves();
@@ -195,13 +233,8 @@ public class Main {
 									} catch (Exception e) {
 
 									}
-									// writeReport(REPORT_FOLDER, datasetName,
-									// filtered.classIndex(), f_eval, f_cl,
-									// (double) f_cl.toString().length() /
-									// base_model_size,
-									// double_param, fvs_alg, type, dis_alg);
 									writeReport(REPORT_FOLDER, datasetName, filtered.classIndex(), f_eval, f_cl,
-											modelSize, double_param, fvs_alg, type, dis_alg, thr_alg, rule2);
+											modelSize, double_param, p_alg, type, dis_alg, thr_alg, rule2);
 									filtered.delete();
 									System.gc();
 								}
@@ -221,13 +254,33 @@ public class Main {
 		System.out.println("Program finished");
 	}
 
+	private PreprocessingType getPreprocessType(Preprocessing_Algorithm p_alg) {
+		PreprocessingType pt;
+		switch (p_alg) {
+		case Correlation:
+		case Random:
+		case Threshold:
+		case Original:
+			pt = PreprocessingType.FVS;
+			break;
+		case IS:
+			pt = PreprocessingType.IS;
+			break;
+		case CFS:
+			pt = PreprocessingType.FS;
+			break;
+		default:
+			pt = PreprocessingType.FVS;
+		}
+		return pt;
+	}
+
 	private Instances loadData(String file) throws Exception {
 		DataSource source;
 
 		source = new DataSource(file);
 
-		if (IS_DEBUG)
-		{
+		if (IS_DEBUG) {
 			System.err.println(file);
 			System.err.println(new Date().toString());
 		}
@@ -330,13 +383,37 @@ public class Main {
 		return result;
 	}
 
-	private Instances featureValueSelection(Instances data, FVS_Algorithm algo, ThresholdType thr_alg, int numInstances,
-			Double... params) {
+	private Instances featureValueSelection(Instances data, Preprocessing_Algorithm algo, ThresholdType thr_alg,
+			int numInstances, Double... params) {
 		Instances result = null;
 		Filter filter = new FVS_Filter(algo, thr_alg, numInstances, params);
 		try {
 			if (filter == null)
-				return null;
+				return data;
+			filter.setInputFormat(data);
+			result = Filter.useFilter(data, filter);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return result;
+	}
+
+	private Instances applySelection(Instances data, Preprocessing_Algorithm algo) {
+		Instances result = null;
+		Filter filter = null;
+		switch (algo) {
+		case CFS:
+			filter = new AttributeSelection();
+			AttributeSelection temp = (AttributeSelection) filter;
+			CfsSubsetEval cfs = new CfsSubsetEval();
+			temp.setEvaluator(cfs);
+			break;
+		default:
+			break;
+		}
+		try {
+			if (filter == null)
+				return data;
 			filter.setInputFormat(data);
 			result = Filter.useFilter(data, filter);
 		} catch (Exception e) {
