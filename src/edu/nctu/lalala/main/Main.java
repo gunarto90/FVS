@@ -12,6 +12,9 @@ import edu.nctu.lalala.enums.Preprocessing_Algorithm;
 import edu.nctu.lalala.enums.ThresholdType;
 import edu.nctu.lalala.fvs.FVS_Filter;
 import weka.attributeSelection.CfsSubsetEval;
+import weka.attributeSelection.ConsistencySubsetEval;
+import weka.attributeSelection.ReliefFAttributeEval;
+import weka.attributeSelection.SVMAttributeEval;
 import weka.classifiers.Classifier;
 import weka.classifiers.Evaluation;
 import weka.classifiers.functions.SMO;
@@ -23,6 +26,10 @@ import weka.core.Instances;
 import weka.core.converters.ConverterUtils.DataSource;
 import weka.filters.Filter;
 import weka.filters.supervised.attribute.AttributeSelection;
+import weka.filters.unsupervised.attribute.KernelFilter;
+import weka.filters.unsupervised.attribute.RELAGGS;
+import weka.filters.unsupervised.attribute.RandomProjection;
+import weka.filters.unsupervised.attribute.Wavelet;
 
 @SuppressWarnings("unused")
 // Updated March 3rd, 2016
@@ -121,7 +128,9 @@ public class Main {
 		ClassifierType[] cts = { ClassifierType.J48, ClassifierType.J48_Pruned };
 		DiscretizationType[] dis = { DiscretizationType.Binning, DiscretizationType.MDL };
 		ThresholdType[] tts = { ThresholdType.NA };
-		Preprocessing_Algorithm[] fas = { Preprocessing_Algorithm.CFS };
+		Preprocessing_Algorithm[] fas = { Preprocessing_Algorithm.CFS, Preprocessing_Algorithm.Consistency, Preprocessing_Algorithm.RandomProjection, Preprocessing_Algorithm.RELLAGS };
+		// Feature Selection
+		//Preprocessing_Algorithm[] fas = { Preprocessing_Algorithm.CFS, Preprocessing_Algorithm.Consistency, Preprocessing_Algorithm.RandomProjection, Preprocessing_Algorithm.RELLAGS };
 		// For each classifier
 		for (ClassifierType type : cts) {
 			// For each fvs
@@ -179,6 +188,7 @@ public class Main {
 									run = 0; // No need to iterate
 								if (type == ClassifierType.DecisionStump)
 									run = -1;
+								if(thr_alg == ThresholdType.NA) run = 0;
 								if (pt == PreprocessingType.FVS) {
 									for (int i = run; i >= 0; i--) {
 										double_param = (double) i / run;
@@ -267,6 +277,9 @@ public class Main {
 			pt = PreprocessingType.IS;
 			break;
 		case CFS:
+		case RandomProjection:
+		case Consistency:
+		case RELLAGS:
 			pt = PreprocessingType.FS;
 			break;
 		default:
@@ -407,6 +420,18 @@ public class Main {
 			AttributeSelection temp = (AttributeSelection) filter;
 			CfsSubsetEval cfs = new CfsSubsetEval();
 			temp.setEvaluator(cfs);
+			break;
+		case Consistency:
+			filter = new AttributeSelection();
+			temp = (AttributeSelection) filter;
+			ConsistencySubsetEval cs = new ConsistencySubsetEval();
+			temp.setEvaluator(cs);
+			break;
+		case RandomProjection:
+			filter = new RandomProjection();
+			break;
+		case RELLAGS:
+			filter = new RELAGGS();
 			break;
 		default:
 			break;
