@@ -62,5 +62,20 @@ public class MathHelper {
 		return q;
 	}
 	
+	public double calculateEntropy(double[] counter, double frequency) {
+		if (frequency == 0)
+			return 0;
+		double entropy = 0;
+		double[] p = new double[counter.length];
+		for (int i = 0; i < counter.length; i++) {
+			p[i] = counter[i] / frequency;
+		}
+		for (int i = 0; i < p.length; i++) {
+			if (p[i] == 0.0F)
+				continue;
+			entropy -= p[i] * (Math.log(p[i]) / Math.log(p.length));
+		}
+		return entropy;
+	}
 	
 }
