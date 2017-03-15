@@ -1,1 +1,1 @@
-To run the experiments, please copy arff files from folder "all" to folder "run"
+To run the experiments, please copy arff files from folder XXX to folder "run"
