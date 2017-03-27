@@ -228,21 +228,27 @@ public class FVSHelper {
 		switch (thr_alg) {
 		case Mean:
 			threshold = mean;
+			System.out.println("Mean: " + threshold);
 			break;
 		case MeanMin:
 			threshold = mean - stdev;
+			System.out.println("Mean-: " + threshold);
 			break;
 		case MeanPlus:
 			threshold = mean + stdev;
+			System.out.println("Mean+: " + threshold);
 			break;
 		case Q1:
 			threshold = q[0];
+			System.out.println("Q1: " + q[0]);
 			break;
 		case Q2:
 			threshold = q[1];
+			System.out.println("Q2: " + q[1]);
 			break;
 		case Q3:
 			threshold = q[2];
+			System.out.println("Q3: " + q[2]);
 			break;
 		default:
 			break;

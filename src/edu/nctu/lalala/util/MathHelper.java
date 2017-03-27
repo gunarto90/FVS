@@ -1,5 +1,9 @@
 package edu.nctu.lalala.util;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
 public class MathHelper {
 	private MathHelper() {
 	}
@@ -52,12 +56,14 @@ public class MathHelper {
 	 */
 	public Double[] calculateQuartile(Double... data)
 	{
+		List<Double> temp = Arrays.asList(data);
+		Collections.sort(temp);
 		Double[] q = new Double[3];	// Q1, Q2, Q3
 		final int QUARTILE = 4;
 		for(int i=1; i<QUARTILE; i++)
 		{
-			int pos = (data.length* i / QUARTILE) + 1;
-			q[i-1] = data[pos];
+			int pos = (temp.size()* i / QUARTILE) + 1;
+			q[i-1] = temp.get(pos);
 		}
 		return q;
 	}
