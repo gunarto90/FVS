@@ -334,8 +334,7 @@ public class FVS_Filter extends Filter {
 		// System.out.println("Q2: " + q[1]);
 		// System.out.println("Q3: " + q[2]);
 		// Selecting correlation threshold
-		double corrThreshold = q[1]; // Use Q3 / Q2 / Mean+Stdev as corr
-										// threshold
+		double corrThreshold = q[1];
 		switch (thr_alg) {
 		case Mean:
 			corrThreshold = mean;

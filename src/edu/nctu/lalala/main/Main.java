@@ -1,9 +1,18 @@
 package edu.nctu.lalala.main;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.OpenOption;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
+import java.util.Map;
 
 import edu.nctu.lalala.enums.ClassifierType;
 import edu.nctu.lalala.enums.DiscretizationType;
@@ -11,10 +20,9 @@ import edu.nctu.lalala.enums.PreprocessingType;
 import edu.nctu.lalala.enums.Preprocessing_Algorithm;
 import edu.nctu.lalala.enums.ThresholdType;
 import edu.nctu.lalala.fvs.FVS_Filter;
+import edu.nctu.lalala.util.FVSHelper;
 import weka.attributeSelection.CfsSubsetEval;
 import weka.attributeSelection.ConsistencySubsetEval;
-import weka.attributeSelection.ReliefFAttributeEval;
-import weka.attributeSelection.SVMAttributeEval;
 import weka.classifiers.Classifier;
 import weka.classifiers.Evaluation;
 import weka.classifiers.functions.SMO;
@@ -26,23 +34,25 @@ import weka.core.Instances;
 import weka.core.converters.ConverterUtils.DataSource;
 import weka.filters.Filter;
 import weka.filters.supervised.attribute.AttributeSelection;
-import weka.filters.unsupervised.attribute.KernelFilter;
 import weka.filters.unsupervised.attribute.RELAGGS;
 import weka.filters.unsupervised.attribute.RandomProjection;
-import weka.filters.unsupervised.attribute.Wavelet;
 
 @SuppressWarnings("unused")
 // Updated March 3rd, 2016
 public class Main {
 
-	private static final boolean IS_DEBUG = true;
+	public static final boolean IS_DEBUG = true;
+	private static final boolean IS_LOG_INTERMEDIATE = true;
+	private static final int NUMBER_OF_BINS = 10;
+	private static final double[] DOUBLE_PARAMS = { 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.09, 0.08, 0.07, 0.06,
+			0.05, 0.04, 0.03, 0.02, 0.01 };
 
 	private static final String DEFAULT_DATASET_FOLDER = "dataset";
 	private static final String NOMINAL_FOLDER = DEFAULT_DATASET_FOLDER + "/nominal/";
 	private static final String NUMERIC_FOLDER = DEFAULT_DATASET_FOLDER + "/numeric/";
 	private static final String TEST_FOLDER = DEFAULT_DATASET_FOLDER + "/run/";
 	private static final String REPORT_FOLDER = "report" + "/";
-	private static final String REPORT_HEADER = "Method\tClassifier\tDiscretization\tThreshold\tAccuracy\tModel ratio\tModel Size\tDouble param\n";
+	private static final String REPORT_HEADER = "User\tMethod\tClassifier\tDiscretization\tThreshold\tAccuracy\tModel ratio\tModel Size\tDouble param\n";
 	/**
 	 * Method - String<br/>
 	 * Classification Algorithm - String<br/>
@@ -52,7 +62,7 @@ public class Main {
 	 * Recall - Float<br/>
 	 * Model size ratio - Float <br/>
 	 */
-	private static final String REPORT_FORMAT = "%s\t%s\t%s\t%s\t%.3f\t%.3f\t%d\t%.3f\n";
+	private static final String REPORT_FORMAT = "%s\t%s\t%s\t%s\t%s\t%.3f\t%.3f\t%d\t%.3f\n";
 
 	private static int RUN_REPETITION = 10;
 
@@ -89,6 +99,9 @@ public class Main {
 	 * @param args
 	 */
 	private void program(String[] args) {
+		PreprocessingType pt;
+		System.out.println("Program Started");
+		System.out.println(new Date());
 		/************************/
 		/* MAIN_PROGRAM IS HERE */
 		/************************/
@@ -112,156 +125,217 @@ public class Main {
 		if (IS_DEBUG)
 			System.err.println(lookupFolder);
 
-		// TODO Change Variables here
-		// ClassifierType[] cts = { ClassifierType.J48,
-		// ClassifierType.J48_Pruned, ClassifierType.DecisionStump };
-		// DiscretizationType[] dis = { DiscretizationType.Binning,
-		// DiscretizationType.MDL };
-		// ThresholdType[] tts = { ThresholdType.Iteration, ThresholdType.Q1,
-		// ThresholdType.Q2, ThresholdType.Q3,
-		// ThresholdType.Mean, ThresholdType.MeanPlus, ThresholdType.MeanMin };
-		// FVS_Algorithm[] fas = { FVS_Algorithm.Threshold,
-		// FVS_Algorithm.Random, FVS_Algorithm.Correlation };
+		@SuppressWarnings("rawtypes")
+		Map<String, List> config = FVSHelper.getInstance().initConfig();
+		FVSHelper.getInstance().logFile(config.toString());
+		FVSHelper.getInstance().logFile(Arrays.asList(folder.list()).toString());
+		List<ClassifierType> cts = FVSHelper.getInstance().getClassifierType(config);
+		List<DiscretizationType> dis = FVSHelper.getInstance().getDiscretizationType(config);
+		List<ThresholdType> tts = FVSHelper.getInstance().getThresholdType(config);
+		List<Preprocessing_Algorithm> fas = FVSHelper.getInstance().getPreprocessing_Algorithm(config);
 
-		// Custom
-		PreprocessingType pt;
-		ClassifierType[] cts = { ClassifierType.J48, ClassifierType.J48_Pruned };
-		DiscretizationType[] dis = { DiscretizationType.Binning, DiscretizationType.MDL };
-		ThresholdType[] tts = { ThresholdType.NA };
-		Preprocessing_Algorithm[] fas = { Preprocessing_Algorithm.CFS, Preprocessing_Algorithm.Consistency, Preprocessing_Algorithm.RandomProjection, Preprocessing_Algorithm.RELLAGS };
-		// Feature Selection
-		//Preprocessing_Algorithm[] fas = { Preprocessing_Algorithm.CFS, Preprocessing_Algorithm.Consistency, Preprocessing_Algorithm.RandomProjection, Preprocessing_Algorithm.RELLAGS };
-		// For each classifier
-		for (ClassifierType type : cts) {
-			// For each fvs
-			for (Preprocessing_Algorithm p_alg : fas) {
-				pt = getPreprocessType(p_alg);
+		// For each file
+		for (String datasetName : folder.list()) {
+			try {
+				// Load original data
+				Instances data = null;
+				// System.out.println("Load data finished");
 				// For each discretization
 				for (DiscretizationType dis_alg : dis) {
-					// For each threshold type
-					for (ThresholdType thr_alg : tts) {
-						// For each file
-						for (String datasetName : folder.list()) {
-							try {
-								if (p_alg == Preprocessing_Algorithm.Random && thr_alg != ThresholdType.Iteration)
-									continue;
-								if (p_alg == Preprocessing_Algorithm.Correlation && thr_alg == ThresholdType.Iteration)
-									continue;
-								int run = RUN_REPETITION;
-								double double_param = 0.0;
-								if (p_alg == Preprocessing_Algorithm.Correlation
-										&& (double_param == 1 || double_param == 0))
-									continue;
-								// Load original data
-								Instances data = loadData(lookupFolder + datasetName);
-								data.deleteAttributeAt(0); // delete timestamp
-								// System.out.println("Load data finished");
-								// Create discretized set
-								Instances discretized = discretize(data, dis_alg);
-								// System.out.println("Discretization
-								// finished");
-								// Build classifier based on original data
-								Classifier o_cl = buildClassifier(discretized, type);
-								// Evaluate the dataset
-								Evaluation o_eval = new Evaluation(discretized);
-								// Cross validate dataset
-								o_eval.crossValidateModel(o_cl, discretized, CROSS_VALIDATION, new Random(1));
-								double modelSize = 0;
-								int rule1, rule2;
-								rule1 = rule2 = 0;
-								J48 a = null, b = null;
-								try {
-									a = (J48) o_cl;
-									modelSize = a.measureNumLeaves();
-									rule1 = (int) a.measureNumRules();
-								} catch (Exception e) {
+					// Create discretized set
+					Instances discretized = null;
+					boolean load_discretized = false;
+					String discretized_cachename = String.format("%s_%s", datasetName, dis_alg.toString());
+					if (FVSHelper.getInstance().isIntermediateExist(discretized_cachename))
+						discretized = FVSHelper.getInstance().loadIntermediateInstances(discretized_cachename);
+					if (discretized == null) {
+						if (data == null) {
+							// Only load data if necessary (no cache)
+							data = loadData(lookupFolder + datasetName);
+							data.deleteAttributeAt(0); // delete timestamp
+						}
+						discretized = discretize(data, dis_alg);
+					} else
+						load_discretized = true;
+					FVSHelper.getInstance().logFile("Discertization: " + dis_alg);
+					if (IS_LOG_INTERMEDIATE && !load_discretized)
+						FVSHelper.getInstance().saveIntermediateInstances(discretized, discretized_cachename);
+					// System.out.println("Discretization finished");
+					// For each classifier
+					for (ClassifierType type : cts) {
+						FVSHelper.getInstance().logFile("Classifier: " + type);
+						// Build classifier based on original data
+						Classifier o_cl = buildClassifier(discretized, type);
+						// Evaluate the dataset
+						Evaluation o_eval = new Evaluation(discretized);
+						// Cross validate dataset
+						try {
+							o_eval.crossValidateModel(o_cl, discretized, CROSS_VALIDATION, new Random(1));
+							double originalModelSize;
+							int rule1, rule2;
+							rule1 = rule2 = 0;
+							double[] result = getModelSize(o_cl);
+							originalModelSize = result[0];
+							rule1 = (int) result[1];
+							writeReport(REPORT_FOLDER, datasetName, discretized.classIndex(), o_eval, o_cl, 1.0, 1.0,
+									"Original", type, dis_alg, "Original", rule1);
+							// For each preprocessing
+							for (Preprocessing_Algorithm p_alg : fas) {
+								FVSHelper.getInstance().logFile("Preprocessing: " + p_alg);
+								pt = getPreprocessType(p_alg);
+								// For each threshold type
+								for (ThresholdType thr_alg : tts) {
+									if (p_alg == Preprocessing_Algorithm.Random && thr_alg != ThresholdType.Iteration)
+										continue;
+									if (p_alg == Preprocessing_Algorithm.Correlation
+											&& thr_alg == ThresholdType.Iteration)
+										continue;
+									int run = RUN_REPETITION;
+									// double double_param = 0.0;
+									if (p_alg == Preprocessing_Algorithm.Threshold
+											&& thr_alg != ThresholdType.Iteration)
+										run = 0; // No need to iterate
+									if (type == ClassifierType.DecisionStump)
+										run = -1;
+									if (thr_alg == ThresholdType.NA)
+										run = 0;
+									double modelSize;
+									if (pt == PreprocessingType.FVS) {
+										double[] temp = null;
+										if (run > 0) {
+											temp = DOUBLE_PARAMS;
+										} else {
+											temp = new double[] { 0.0 };
+										}
+										for (int i = 0; i < temp.length; i++) {
+											Double double_param = temp[i];
+											if (run <= 0) {
+												FVSHelper.getInstance().logFile(datasetName + " : " + thr_alg);
+											} else {
+												FVSHelper.getInstance().logFile(datasetName + " : " + double_param);
+											}
+											if (p_alg == Preprocessing_Algorithm.Correlation
+													&& (double_param == 1 || double_param == 0))
+												continue;
+											/*
+											 * Filter dataset using FVS
+											 * algorithms
+											 */
+											Instances filtered = null;
+											boolean load_pre = false;
+											String pre_cachename = String.format("%s_%s_%s_%s_%.2f", datasetName,
+													dis_alg.toString(), p_alg.toString(), thr_alg.toString(),
+													double_param);
+											if (FVSHelper.getInstance().isIntermediateExist(pre_cachename))
+												filtered = FVSHelper.getInstance()
+														.loadIntermediateInstances(pre_cachename);
+											if (filtered == null)
+												filtered = featureValueSelection(discretized, p_alg, thr_alg,
+														discretized.numInstances(), double_param);
+											else
+												load_pre = true;
+											if (IS_LOG_INTERMEDIATE && !load_pre)
+												FVSHelper.getInstance().saveIntermediateInstances(discretized,
+														pre_cachename);
+											/*
+											 * Build classifier based on
+											 * filtered data
+											 */
+											Classifier f_cl = buildClassifier(filtered, type);
+											// Evaluate the dataset
+											Evaluation f_eval = new Evaluation(filtered);
+											// Cross validate dataset
+											f_eval.crossValidateModel(f_cl, filtered, CROSS_VALIDATION, new Random(1));
+											// Compare model size
+											double[] result2 = getModelSize(f_cl);
+											modelSize = result2[0] / originalModelSize;
+											rule2 = (int) result2[1];
+											writeReport(REPORT_FOLDER, datasetName, filtered.classIndex(), f_eval, f_cl,
+													modelSize, double_param, p_alg, type, dis_alg, thr_alg, rule2);
+											filtered.delete();
+											System.gc();
+										}
+										for (int i = run; i >= 0; i--) {
 
-								}
-								// printEvaluation(o_eval, null,
-								// discretized.classIndex(),
-								// "Original");
-								writeReport(REPORT_FOLDER, datasetName, discretized.classIndex(), o_eval, o_cl,
-										modelSize, double_param, Preprocessing_Algorithm.Original, type, dis_alg,
-										thr_alg, rule1);
-								// System.out.println(o_cl.toString());
-								if (p_alg == Preprocessing_Algorithm.Threshold && thr_alg != ThresholdType.Iteration)
-									run = 0; // No need to iterate
-								if (type == ClassifierType.DecisionStump)
-									run = -1;
-								if(thr_alg == ThresholdType.NA) run = 0;
-								if (pt == PreprocessingType.FVS) {
-									for (int i = run; i >= 0; i--) {
-										double_param = (double) i / run;
-										System.out.println(datasetName + " : " + double_param);
-										// Filter dataset using FVS algorithm
-										Instances filtered = featureValueSelection(discretized, p_alg, thr_alg,
-												discretized.numInstances(), double_param);
-										// Build classifier based on filtered data
+										}
+									} else {
+										Instances filtered = null;
+										boolean load_pre = false;
+										String pre_cachename = String.format("%s_%s_%s", datasetName,
+												dis_alg.toString(), p_alg.toString());
+										FVSHelper.getInstance().logFile(datasetName + " : " + p_alg.toString());
+										if (FVSHelper.getInstance().isIntermediateExist(pre_cachename))
+											filtered = FVSHelper.getInstance().loadIntermediateInstances(pre_cachename);
+										if (filtered == null)
+											filtered = applySelection(discretized, p_alg);
+										else
+											load_pre = true;
+										if (IS_LOG_INTERMEDIATE && !load_pre)
+											FVSHelper.getInstance().saveIntermediateInstances(discretized,
+													pre_cachename);
+										/*
+										 * Build classifier based on filtered
+										 * data
+										 */
 										Classifier f_cl = buildClassifier(filtered, type);
 										// Evaluate the dataset
 										Evaluation f_eval = new Evaluation(filtered);
 										// Cross validate dataset
 										f_eval.crossValidateModel(f_cl, filtered, CROSS_VALIDATION, new Random(1));
-										// if (IS_DEBUG)
-										// System.out.println(cl.toString());
-										// printEvaluation(f_eval, null,
-										// filtered.classIndex(),
-										// "Filtered");
-										// Compare model size
-
-										try {
-											b = (J48) f_cl;
-											modelSize = (double) b.measureNumLeaves() / a.measureNumLeaves();
-											rule2 = (int) b.measureNumRules();
-										} catch (Exception e) {
-
-										}
-										// writeReport(REPORT_FOLDER,
-										// datasetName,
-										// filtered.classIndex(), f_eval, f_cl,
-										// (double) f_cl.toString().length() /
-										// base_model_size,
-										// double_param, fvs_alg, type,
-										// dis_alg);
+										double[] result2 = getModelSize(f_cl);
+										modelSize = result2[0] / originalModelSize;
+										rule2 = (int) result2[1];
 										writeReport(REPORT_FOLDER, datasetName, filtered.classIndex(), f_eval, f_cl,
-												modelSize, double_param, p_alg, type, dis_alg, thr_alg, rule2);
+												modelSize, 0.0, p_alg, type, dis_alg, thr_alg, rule2);
 										filtered.delete();
 										System.gc();
 									}
-								} else {
-									Instances filtered = applySelection(discretized, p_alg);
-									// Build classifier based on filtered data
-									Classifier f_cl = buildClassifier(filtered, type);
-									// Evaluate the dataset
-									Evaluation f_eval = new Evaluation(filtered);
-									// Cross validate dataset
-									f_eval.crossValidateModel(f_cl, filtered, CROSS_VALIDATION, new Random(1));
-									try {
-										b = (J48) f_cl;
-										modelSize = (double) b.measureNumLeaves() / a.measureNumLeaves();
-										rule2 = (int) b.measureNumRules();
-									} catch (Exception e) {
-
-									}
-									writeReport(REPORT_FOLDER, datasetName, filtered.classIndex(), f_eval, f_cl,
-											modelSize, double_param, p_alg, type, dis_alg, thr_alg, rule2);
-									filtered.delete();
-									System.gc();
 								}
-								System.out.println();
-								data.delete();
-								System.gc();
-							} catch (Exception e) {
-								if (IS_DEBUG)
-									e.printStackTrace();
-							}
-						} // For each file
+							} // For each classifier
+						} catch (Exception exc) {
+							if (IS_DEBUG)
+								exc.printStackTrace();
+						}
 					} // For each threshold type
-				} // For each discretization
-			} // For each fvs
-		} // For each classifier
+				} // For each preprocessing
+				System.out.println();
+				if (data != null)
+					data.delete();
+				System.gc();
+			} // For each discretization
+			catch (Exception e) {
+				if (IS_DEBUG)
+					e.printStackTrace();
+			}
+		} // For each file
 
 		System.out.println("Program finished");
+		System.out.println(new Date());
+	}
+
+	private double[] getModelSize(Classifier o_cl) {
+		double[] result = new double[2];
+		double modelSize = 0.0;
+		double rule = 0.0;
+		try {
+			J48 a = (J48) o_cl;
+			modelSize = a.measureNumLeaves();
+			rule = a.measureNumRules();
+		} catch (Exception e) {
+
+		}
+		if (modelSize == 0.0) {
+			try {
+				JRip a = (JRip) o_cl;
+				modelSize = a.getRuleset().size();
+				rule = modelSize;
+			} catch (Exception e) {
+
+			}
+		}
+		result[0] = modelSize;
+		result[1] = rule;
+		return result;
 	}
 
 	private PreprocessingType getPreprocessType(Preprocessing_Algorithm p_alg) {
@@ -294,7 +368,7 @@ public class Main {
 		source = new DataSource(file);
 
 		if (IS_DEBUG) {
-			System.err.println(file);
+			FVSHelper.getInstance().logFile(file);
 			System.err.println(new Date().toString());
 		}
 		Instances data = source.getDataSet();
@@ -321,6 +395,11 @@ public class Main {
 			break;
 		case JRip:
 			c = new JRip();
+			((JRip) c).setUsePruning(false);
+			break;
+		case JRip_Pruned:
+			c = new JRip();
+			((JRip) c).setUsePruning(true);
 			break;
 		case SMO:
 			c = new SMO();
@@ -381,9 +460,15 @@ public class Main {
 	private Instances discretize(Instances data, DiscretizationType type) {
 		Instances result = null;
 		Filter filter = null;
-		if (type == DiscretizationType.Binning)
+		if (type == DiscretizationType.None) {
+			return data;
+		} else if (type == DiscretizationType.Binning) {
 			filter = new weka.filters.unsupervised.attribute.Discretize();
-		else if (type == DiscretizationType.MDL)
+			((weka.filters.unsupervised.attribute.Discretize) filter).setBins(NUMBER_OF_BINS);
+		} else if (type == DiscretizationType.Frequency) {
+			filter = new weka.filters.unsupervised.attribute.Discretize();
+			((weka.filters.unsupervised.attribute.Discretize) filter).setUseEqualFrequency(true);
+		} else if (type == DiscretizationType.MDL)
 			filter = new weka.filters.supervised.attribute.Discretize();
 		try {
 			if (filter == null)
@@ -454,6 +539,7 @@ public class Main {
 		if (datasetName.contains(".")) {
 			datasetName = datasetName.split("\\.")[0];
 		}
+		String uid = datasetName;
 		// String copyName = datasetName + params[0].toString() + "_" +
 		// params[1].toString() + "_" + params[2].toString() + "_" +
 		// params[3].toString() + ".txt";
@@ -479,8 +565,12 @@ public class Main {
 		// calculateAccuracy(TP, TN, FP, FN), calculatePrecision(TP, FP),
 		// calculateRecall(TP, FN), model_ratio,
 		// double_param));
-		fileWriter.append(String.format(REPORT_FORMAT, params[0].toString(), params[1].toString(), params[2].toString(),
-				params[3].toString(), calculateAccuracy(TP, TN, FP, FN), model_ratio, params[4], double_param));
+		String threshold = double_param + "";
+		if (threshold.trim().equalsIgnoreCase("nan"))
+			threshold = params[3].toString();
+		fileWriter.append(
+				String.format(REPORT_FORMAT, uid, params[0].toString(), params[1].toString(), params[2].toString(),
+						params[3].toString(), calculateAccuracy(TP, TN, FP, FN), model_ratio, params[4], double_param));
 		fileWriter.close();
 		// fileWriterCopy.append(String.format(REPORT_FORMAT,
 		// params[0].toString(), params[1].toString(), params[2].toString(),

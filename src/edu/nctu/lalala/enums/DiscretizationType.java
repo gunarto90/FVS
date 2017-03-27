@@ -1,5 +1,5 @@
 package edu.nctu.lalala.enums;
 
 public enum DiscretizationType {
-	Binning, MDL
+	None, Binning, Frequency, MDL
 }

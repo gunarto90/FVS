@@ -1,0 +1,35 @@
+{
+    "_comments": "These are the options for each parameter in the experiments",
+    "classifier":[
+        "j48",
+        "j48_pruned",
+        "jrip",
+        "jrip_pruned",
+        "decision_stump"
+    ],
+    "discretization":[
+        "none",
+        "binning",
+        "frequency",
+        "mdl"
+    ],
+    "threshold":[
+        "na",
+        "iteration", 
+        "q1", 
+        "q2", 
+        "q3", 
+        "mean", 
+        "meanplus", 
+        "meanmin"
+    ],
+    "preprocessing":[
+        "original",
+        "random",
+        "threshold",
+        "correlation",
+        "cfs",
+        "consistency",
+        "projection"
+    ]
+}
