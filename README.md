@@ -5,8 +5,10 @@ This is the implementation of the research work in the DSAA 2014. If you are int
 - Gunarto Sindoro Njoo, Yu-Hsiang Peng, Kuo-Wei Hsu, Wen-Chih Peng: On selecting feature-value pairs on smart phones for activity inferences. DSAA 2014: 319-325
 
 Following option need to be set before run the application
-<b> Java VM Option </b> -Xmx4g
-- To set VM memory limit to be 4 GB.
+- <b> Java VM Option </b> -Xmx4g
+-- To set VM memory limit to be 4 GB.
+- Create a config file in config/config.json
+-- Can refer to config.example.json for the format
 
 However, if you prefer bigger memory limit, you could change <b>4g</b> to be other numbers.
 
