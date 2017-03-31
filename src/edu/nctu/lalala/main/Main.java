@@ -127,7 +127,7 @@ public class Main {
 		@SuppressWarnings("rawtypes")
 		Map<String, List> config = FVSHelper.getInstance().initConfig();
 		FVSHelper.getInstance().logFile(config.toString());
-		FVSHelper.getInstance().logFile(Arrays.asList(folder.list()).toString());
+//		FVSHelper.getInstance().logFile(Arrays.asList(folder.list()).toString());
 		List<ClassifierType> cts = FVSHelper.getInstance().getClassifierType(config);
 		List<DiscretizationType> dis = FVSHelper.getInstance().getDiscretizationType(config);
 		List<ThresholdType> tts = FVSHelper.getInstance().getThresholdType(config);
