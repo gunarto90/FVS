@@ -127,7 +127,7 @@ public class Main {
 		@SuppressWarnings("rawtypes")
 		Map<String, List> config = FVSHelper.getInstance().initConfig();
 		FVSHelper.getInstance().logFile(config.toString());
-//		FVSHelper.getInstance().logFile(Arrays.asList(folder.list()).toString());
+		FVSHelper.getInstance().logFile(Arrays.asList(folder.list()).toString());
 		List<ClassifierType> cts = FVSHelper.getInstance().getClassifierType(config);
 		List<DiscretizationType> dis = FVSHelper.getInstance().getDiscretizationType(config);
 		List<ThresholdType> tts = FVSHelper.getInstance().getThresholdType(config);
@@ -296,6 +296,7 @@ public class Main {
 						} catch (Exception exc) {
 							if (IS_DEBUG)
 								exc.printStackTrace();
+							FVSHelper.getInstance().logFile(exc.getMessage());
 						}
 					} // For each threshold type
 				} // For each preprocessing
@@ -307,6 +308,7 @@ public class Main {
 			catch (Exception e) {
 				if (IS_DEBUG)
 					e.printStackTrace();
+				FVSHelper.getInstance().logFile(e.getMessage());
 			}
 		} // For each file
 
@@ -478,6 +480,7 @@ public class Main {
 			result = Filter.useFilter(data, filter);
 		} catch (Exception e) {
 			e.printStackTrace();
+			FVSHelper.getInstance().logFile(e.getMessage());
 		}
 		return result;
 	}
@@ -493,6 +496,7 @@ public class Main {
 			result = Filter.useFilter(data, filter);
 		} catch (Exception e) {
 			e.printStackTrace();
+			FVSHelper.getInstance().logFile(e.getMessage());
 		}
 		return result;
 	}
@@ -529,6 +533,7 @@ public class Main {
 			result = Filter.useFilter(data, filter);
 		} catch (Exception e) {
 			e.printStackTrace();
+			FVSHelper.getInstance().logFile(e.getMessage());
 		}
 		return result;
 	}

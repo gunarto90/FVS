@@ -362,8 +362,8 @@ public class FVSHelper {
 			INTERMEDIATE_FOLDER = obj.get("intermediate").toString();
 			if (!INTERMEDIATE_FOLDER.endsWith("\\") && !INTERMEDIATE_FOLDER.endsWith("/"))
 				INTERMEDIATE_FOLDER = INTERMEDIATE_FOLDER + "\\";
-			System.out.println(INTERMEDIATE_FOLDER);
-			System.out.println(Arrays.asList(new File(INTERMEDIATE_FOLDER).list()));
+//			System.out.println(INTERMEDIATE_FOLDER);
+//			System.out.println(Arrays.asList(new File(INTERMEDIATE_FOLDER).list()));
 		} catch (JSONException e) {
 			// JSON Parsing error
 			e.printStackTrace();
