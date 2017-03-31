@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
@@ -43,7 +44,7 @@ public class FVSHelper {
 	private static final long timestamp = new Date().getTime();
 	private static final String CONFIG_FOLDER = "config" + "/";
 	private static final String LOG_FOLDER = "log" + "/";
-	private static final String INTERMEDIATE_FOLDER = "intermediate" + "/";
+	private String INTERMEDIATE_FOLDER = "intermediate" + "/";
 
 	private FVSHelper() {
 		System.err.println(timestamp);
@@ -355,6 +356,14 @@ public class FVSHelper {
 				}
 				dict.put(s, list);
 			}
+			/* Initialize folder(s) */
+			JSONObject obj = null;
+			obj = rootObject.getJSONObject("folder");
+			INTERMEDIATE_FOLDER = obj.get("intermediate").toString();
+			if (!INTERMEDIATE_FOLDER.endsWith("\\") && !INTERMEDIATE_FOLDER.endsWith("/"))
+				INTERMEDIATE_FOLDER = INTERMEDIATE_FOLDER + "\\";
+			System.out.println(INTERMEDIATE_FOLDER);
+			System.out.println(Arrays.asList(new File(INTERMEDIATE_FOLDER).list()));
 		} catch (JSONException e) {
 			// JSON Parsing error
 			e.printStackTrace();

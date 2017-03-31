@@ -44,8 +44,7 @@ public class Main {
 	public static final boolean IS_DEBUG = true;
 	private static final boolean IS_LOG_INTERMEDIATE = true;
 	private static final int NUMBER_OF_BINS = 10;
-	private static final double[] DOUBLE_PARAMS = { 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.09, 0.08, 0.07, 0.06,
-			0.05, 0.04, 0.03, 0.02, 0.01 };
+	private static final double[] DOUBLE_PARAMS = { 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1};
 
 	private static final String DEFAULT_DATASET_FOLDER = "dataset";
 	private static final String NOMINAL_FOLDER = DEFAULT_DATASET_FOLDER + "/nominal/";
@@ -289,6 +288,8 @@ public class Main {
 												modelSize, 0.0, p_alg, type, dis_alg, thr_alg, rule2);
 										filtered.delete();
 										System.gc();
+										// No need to loop over various "threshold"
+										break;
 									}
 								}
 							} // For each classifier

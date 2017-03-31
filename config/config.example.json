@@ -31,5 +31,8 @@
         "cfs",
         "consistency",
         "projection"
-    ]
+    ],
+    "folder": {
+        "intermediate":"./intermediate/"
+    }
 }
