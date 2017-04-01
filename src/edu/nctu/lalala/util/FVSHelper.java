@@ -358,7 +358,7 @@ public class FVSHelper {
 			}
 			/* Initialize folder(s) */
 			JSONObject obj = null;
-			obj = rootObject.getJSONObject("folder");
+			obj = rootObject.getJSONObject("folder_setup");
 			INTERMEDIATE_FOLDER = obj.get("intermediate").toString();
 			if (!INTERMEDIATE_FOLDER.endsWith("\\") && !INTERMEDIATE_FOLDER.endsWith("/"))
 				INTERMEDIATE_FOLDER = INTERMEDIATE_FOLDER + "\\";

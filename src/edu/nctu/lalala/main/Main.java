@@ -11,6 +11,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -44,7 +45,7 @@ public class Main {
 	public static final boolean IS_DEBUG = true;
 	private static final boolean IS_LOG_INTERMEDIATE = true;
 	private static final int NUMBER_OF_BINS = 10;
-	private static final double[] DOUBLE_PARAMS = { 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1};
+	private static final double[] DOUBLE_PARAMS = { 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1 };
 
 	private static final String DEFAULT_DATASET_FOLDER = "dataset";
 	private static final String NOMINAL_FOLDER = DEFAULT_DATASET_FOLDER + "/nominal/";
@@ -160,151 +161,150 @@ public class Main {
 					if (IS_LOG_INTERMEDIATE && !load_discretized)
 						FVSHelper.getInstance().saveIntermediateInstances(discretized, discretized_cachename);
 					// System.out.println("Discretization finished");
-					// For each classifier
+					boolean fs_cfs = false;
+					boolean fs_consistency = false;
+					boolean fs_projection = false;
+					Map<ClassifierType, Double> originalModelSize = new HashMap<>();
+					Map<ClassifierType, Integer> originalRule = new HashMap<>();
+					/* Initialize the original model size and rule */
 					for (ClassifierType type : cts) {
 						FVSHelper.getInstance().logFile("Classifier: " + type);
-						// Build classifier based on original data
-						Classifier o_cl = buildClassifier(discretized, type);
-						// Evaluate the dataset
-						Evaluation o_eval = new Evaluation(discretized);
-						// Cross validate dataset
-						try {
+						double modelSize = Double.NEGATIVE_INFINITY;
+						modelSize = originalModelSize.getOrDefault(type, Double.NEGATIVE_INFINITY);
+						if (modelSize == Double.NEGATIVE_INFINITY) {
+							Classifier o_cl = null;
+							Evaluation o_eval = null;
+							// Build classifier based on original data
+							o_cl = buildClassifier(discretized, type);
+							// Evaluate the dataset
+							o_eval = new Evaluation(discretized);
+							// Cross validate dataset
 							o_eval.crossValidateModel(o_cl, discretized, CROSS_VALIDATION, new Random(1));
-							double originalModelSize;
-							int rule1, rule2;
-							rule1 = rule2 = 0;
+							// Variables for evaluation
 							double[] result = getModelSize(o_cl);
-							originalModelSize = result[0];
-							rule1 = (int) result[1];
-							writeReport(REPORT_FOLDER, datasetName, discretized.classIndex(), o_eval, o_cl, 1.0, 1.0,
-									"Original", type, dis_alg, "Original", rule1);
-							// For each preprocessing
-							for (Preprocessing_Algorithm p_alg : fas) {
-								FVSHelper.getInstance().logFile("Preprocessing: " + p_alg);
-								pt = getPreprocessType(p_alg);
-								// For each threshold type
-								for (ThresholdType thr_alg : tts) {
-									if (p_alg == Preprocessing_Algorithm.Random && thr_alg != ThresholdType.Iteration)
-										continue;
-									if (p_alg == Preprocessing_Algorithm.Correlation
-											&& thr_alg == ThresholdType.Iteration)
-										continue;
-									int run = RUN_REPETITION;
-									// double double_param = 0.0;
-									if (p_alg == Preprocessing_Algorithm.Threshold
-											&& thr_alg != ThresholdType.Iteration)
-										run = 0; // No need to iterate
-									if (type == ClassifierType.DecisionStump)
-										run = -1;
-									if (thr_alg == ThresholdType.NA)
-										run = 0;
-									double modelSize;
-									if (pt == PreprocessingType.FVS) {
-										double[] temp = null;
-										if (run > 0) {
-											temp = DOUBLE_PARAMS;
-										} else {
-											temp = new double[] { 0.0 };
-										}
-										for (int i = 0; i < temp.length; i++) {
-											Double double_param = temp[i];
-											if (run <= 0) {
-												FVSHelper.getInstance().logFile(datasetName + " : " + thr_alg);
-											} else {
-												FVSHelper.getInstance().logFile(datasetName + " : " + double_param);
-											}
-											if (p_alg == Preprocessing_Algorithm.Correlation
-													&& (double_param == 1 || double_param == 0))
-												continue;
-											/*
-											 * Filter dataset using FVS
-											 * algorithms
-											 */
-											Instances filtered = null;
-											boolean load_pre = false;
-											String pre_cachename = String.format("%s_%s_%s_%s_%.2f", datasetName,
-													dis_alg.toString(), p_alg.toString(), thr_alg.toString(),
-													double_param);
-											if (FVSHelper.getInstance().isIntermediateExist(pre_cachename))
-												filtered = FVSHelper.getInstance()
-														.loadIntermediateInstances(pre_cachename);
-											if (filtered == null)
-												filtered = featureValueSelection(discretized, p_alg, thr_alg,
-														discretized.numInstances(), double_param);
-											else
-												load_pre = true;
-											if (IS_LOG_INTERMEDIATE && !load_pre)
-												FVSHelper.getInstance().saveIntermediateInstances(discretized,
-														pre_cachename);
-											/*
-											 * Build classifier based on
-											 * filtered data
-											 */
-											Classifier f_cl = buildClassifier(filtered, type);
-											// Evaluate the dataset
-											Evaluation f_eval = new Evaluation(filtered);
-											// Cross validate dataset
-											f_eval.crossValidateModel(f_cl, filtered, CROSS_VALIDATION, new Random(1));
-											// Compare model size
-											double[] result2 = getModelSize(f_cl);
-											modelSize = result2[0] / originalModelSize;
-											rule2 = (int) result2[1];
-											writeReport(REPORT_FOLDER, datasetName, filtered.classIndex(), f_eval, f_cl,
-													modelSize, double_param, p_alg, type, dis_alg, thr_alg, rule2);
-											filtered.delete();
-											System.gc();
-										}
-										for (int i = run; i >= 0; i--) {
-
-										}
+							modelSize = result[0];
+							int rule = (int) result[1];
+							if(type == ClassifierType.DecisionStump)
+								rule = 1;
+							originalModelSize.put(type, modelSize);
+							originalRule.put(type, rule);
+							writeReport(REPORT_FOLDER, datasetName, discretized.classIndex(), o_eval, o_cl, 1.0,
+									1.0, "Original", type, dis_alg, "Original", rule);
+						}
+					}
+					/* For each pre-processing */
+					for (Preprocessing_Algorithm p_alg : fas) {
+						FVSHelper.getInstance().logFile("Preprocessing: " + p_alg);
+						pt = getPreprocessType(p_alg);
+						// For each threshold type
+						for (ThresholdType thr_alg : tts) {
+							int run_preprocessing = 1;
+							double modelSize = Double.NEGATIVE_INFINITY;
+							int rule;
+							// No random without iteration
+							if (p_alg == Preprocessing_Algorithm.Random && thr_alg != ThresholdType.Iteration)
+								continue;
+							// Correlation and iteration cannot work together
+							if (p_alg == Preprocessing_Algorithm.Correlation && thr_alg == ThresholdType.Iteration)
+								continue;
+							if (p_alg == Preprocessing_Algorithm.Threshold && thr_alg != ThresholdType.Iteration)
+								run_preprocessing = 0;
+							if (thr_alg == ThresholdType.NA)
+								run_preprocessing = 0;
+							/* Run FVS */
+							if (pt == PreprocessingType.FVS) {
+								double[] temp = null;
+								if (run_preprocessing > 0) {
+									temp = DOUBLE_PARAMS;
+								} else {
+									// Run once with the selected parameter
+									temp = new double[] { 0.0 };
+								}
+								// Execution
+								for (int i = 0; i < temp.length; i++) {
+									Double double_param = temp[i];
+									if (run_preprocessing <= 0) {
+										FVSHelper.getInstance().logFile(datasetName + " : " + thr_alg);
 									} else {
-										Instances filtered = null;
-										boolean load_pre = false;
-										String pre_cachename = String.format("%s_%s_%s", datasetName,
-												dis_alg.toString(), p_alg.toString());
-										FVSHelper.getInstance().logFile(datasetName + " : " + p_alg.toString());
-										if (FVSHelper.getInstance().isIntermediateExist(pre_cachename))
-											filtered = FVSHelper.getInstance().loadIntermediateInstances(pre_cachename);
-										if (filtered == null)
-											filtered = applySelection(discretized, p_alg);
-										else
-											load_pre = true;
-										if (IS_LOG_INTERMEDIATE && !load_pre)
-											FVSHelper.getInstance().saveIntermediateInstances(discretized,
-													pre_cachename);
-										/*
-										 * Build classifier based on filtered
-										 * data
-										 */
+										FVSHelper.getInstance().logFile(datasetName + " : " + double_param);
+									}
+									if (p_alg == Preprocessing_Algorithm.Correlation
+											&& (double_param == 1 || double_param == 0))
+										continue;
+									/*
+									 * Filter the dataset using FVS
+									 * algorithms
+									 */
+									Instances filtered = null;
+									filtered = featureValueSelection(discretized, p_alg, thr_alg,
+											discretized.numInstances(), double_param);
+									/*
+									 * Build classifier using filtered data
+									 */
+									for (ClassifierType type : cts) {
+										if(type == ClassifierType.DecisionStump)
+											continue;
+										FVSHelper.getInstance().logFile("Classifier: " + type);
 										Classifier f_cl = buildClassifier(filtered, type);
 										// Evaluate the dataset
 										Evaluation f_eval = new Evaluation(filtered);
 										// Cross validate dataset
 										f_eval.crossValidateModel(f_cl, filtered, CROSS_VALIDATION, new Random(1));
-										double[] result2 = getModelSize(f_cl);
-										modelSize = result2[0] / originalModelSize;
-										rule2 = (int) result2[1];
+										// Compare model size
+										double[] result = getModelSize(f_cl);
+										modelSize = result[0] / originalModelSize.get(type);
+										rule = (int) result[1];
 										writeReport(REPORT_FOLDER, datasetName, filtered.classIndex(), f_eval, f_cl,
-												modelSize, 0.0, p_alg, type, dis_alg, thr_alg, rule2);
-										filtered.delete();
-										System.gc();
-										// No need to loop over various "threshold"
-										break;
+												modelSize, double_param, p_alg, type, dis_alg, thr_alg, rule);
 									}
+									filtered.delete();
 								}
-							} // For each classifier
-						} catch (Exception exc) {
-							if (IS_DEBUG)
-								exc.printStackTrace();
-							FVSHelper.getInstance().logFile(exc.getMessage());
-						}
-					} // For each threshold type
-				} // For each preprocessing
-				System.out.println();
-				if (data != null)
-					data.delete();
-				System.gc();
-			} // For each discretization
+								System.gc();
+							}
+							/* Run Other Preprocessings */
+							else {
+								if ((fs_cfs && p_alg == Preprocessing_Algorithm.CFS)
+										|| (fs_consistency && p_alg == Preprocessing_Algorithm.Consistency)
+										|| (fs_projection && p_alg == Preprocessing_Algorithm.RandomProjection))
+									continue;
+								Instances filtered = null;
+								filtered = applySelection(discretized, p_alg);
+								/*
+								 * Build classifier based on filtered data
+								 */
+								for (ClassifierType type : cts) {
+									if(type == ClassifierType.DecisionStump)
+										continue;
+									FVSHelper.getInstance().logFile("Classifier: " + type);
+									Classifier f_cl = buildClassifier(filtered, type);
+									// Evaluate the dataset
+									Evaluation f_eval = new Evaluation(filtered);
+									// Cross validate dataset
+									f_eval.crossValidateModel(f_cl, filtered, CROSS_VALIDATION, new Random(1));
+									double[] result = getModelSize(f_cl);
+									modelSize = result[0] / originalModelSize.get(type);
+									rule = (int) result[1];
+									writeReport(REPORT_FOLDER, datasetName, filtered.classIndex(), f_eval, f_cl,
+											modelSize, 0.0, p_alg, type, dis_alg, thr_alg, rule);
+								}
+								filtered.delete();
+								System.gc();
+								// No need to loop over various "threshold"
+								if (p_alg == Preprocessing_Algorithm.CFS)
+									fs_cfs = true;
+								else if (p_alg == Preprocessing_Algorithm.Consistency)
+									fs_consistency = true;
+								else if (p_alg == Preprocessing_Algorithm.RandomProjection)
+									fs_projection = true;
+							}
+						} // For each threshold type
+					} // For each preprocessing algorithm
+					System.out.println();
+					if (data != null)
+						data.delete();
+					System.gc();
+				} // For each discretization
+			} // Try for each file
 			catch (Exception e) {
 				if (IS_DEBUG)
 					e.printStackTrace();

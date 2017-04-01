@@ -32,7 +32,7 @@
         "consistency",
         "projection"
     ],
-    "folder": {
+    "folder_setup": {
         "intermediate":"./intermediate/"
     }
 }
