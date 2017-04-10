@@ -9,7 +9,6 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
@@ -293,11 +292,15 @@ public class FVSHelper {
 	}
 
 	public void saveIntermediateInstances(Instances dataSet, String remark) {
+		remark = remark.replace(".arff", "");
 		String filename = INTERMEDIATE_FOLDER + remark + ".arff";
+		File f = new File(filename);
+		if (f.exists())
+			return;
 		ArffSaver saver = new ArffSaver();
 		saver.setInstances(dataSet);
 		try {
-			saver.setFile(new File(filename));
+			saver.setFile(f);
 			saver.writeBatch();
 		} catch (IOException e) {
 			if (Main.IS_DEBUG)
@@ -308,6 +311,7 @@ public class FVSHelper {
 	}
 
 	public Instances loadIntermediateInstances(String remark) {
+		remark = remark.replace(".arff", "");
 		Instances data = null;
 		try {
 			String filename = INTERMEDIATE_FOLDER + remark + ".arff";
@@ -330,10 +334,16 @@ public class FVSHelper {
 		return f.exists();
 	}
 
-	@SuppressWarnings({ "rawtypes" })
+	@SuppressWarnings("rawtypes")
 	public Map<String, List> initConfig() {
+		return initConfig("config.json");
+	}
+
+	@SuppressWarnings({ "rawtypes" })
+	public Map<String, List> initConfig(String configFilename) {
+		System.err.println("Read config from: " + configFilename);
 		Map<String, List> dict = new HashMap<>();
-		String filename = CONFIG_FOLDER + "config.json";
+		String filename = CONFIG_FOLDER + configFilename;
 		StringBuilder sb = new StringBuilder();
 		try (BufferedReader in = Files.newBufferedReader(Paths.get(filename), Charset.forName("UTF-8"))) {
 			String line = null;
@@ -441,18 +451,18 @@ public class FVSHelper {
 		for (String s : list) {
 			if (s.equalsIgnoreCase("original"))
 				result.add(Preprocessing_Algorithm.Original);
-			else if (s.equalsIgnoreCase("random"))
-				result.add(Preprocessing_Algorithm.Random);
-			else if (s.equalsIgnoreCase("threshold"))
-				result.add(Preprocessing_Algorithm.Threshold);
-			else if (s.equalsIgnoreCase("correlation"))
-				result.add(Preprocessing_Algorithm.Correlation);
+			else if (s.equalsIgnoreCase("RandomFVS"))
+				result.add(Preprocessing_Algorithm.FVS_Random);
+			else if (s.equalsIgnoreCase("EntropyFVS"))
+				result.add(Preprocessing_Algorithm.FVS_Entropy);
+			else if (s.equalsIgnoreCase("CorrelationFVS"))
+				result.add(Preprocessing_Algorithm.FVS_Correlation);
 			else if (s.equalsIgnoreCase("cfs"))
-				result.add(Preprocessing_Algorithm.CFS);
+				result.add(Preprocessing_Algorithm.FS_CFS);
 			else if (s.equalsIgnoreCase("consistency"))
-				result.add(Preprocessing_Algorithm.Consistency);
+				result.add(Preprocessing_Algorithm.FS_Consistency);
 			else if (s.equalsIgnoreCase("projection"))
-				result.add(Preprocessing_Algorithm.RandomProjection);
+				result.add(Preprocessing_Algorithm.FS_RandomProjection);
 		}
 		return result;
 	}

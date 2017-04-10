@@ -38,7 +38,6 @@ public class Main {
 
 	public static final boolean IS_DEBUG = true;
 	private static final boolean IS_LOG_INTERMEDIATE = true;
-	private static final int NUMBER_OF_BINS = 10;
 	private static final double[] DOUBLE_PARAMS = { 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1 };
 
 	private static final String DEFAULT_DATASET_FOLDER = "dataset";
@@ -46,21 +45,21 @@ public class Main {
 	private static final String NUMERIC_FOLDER = DEFAULT_DATASET_FOLDER + "/numeric/";
 	private static final String TEST_FOLDER = DEFAULT_DATASET_FOLDER + "/run/";
 	private static final String REPORT_FOLDER = "report" + "/";
-	private static final String REPORT_HEADER = "User\tMethod\tClassifier\tDiscretization\tThreshold\tAccuracy\tModel ratio\tModel Size\tDouble param\n";
+	private static final String REPORT_HEADER = "User\tMethod\tClassifier\tDiscretization\tThreshold\tAccuracy\tModel Size\tDouble param\n";
 	/**
 	 * Method - String<br/>
 	 * Classification Algorithm - String<br/>
 	 * Discretization - String<br/>
+	 * Threshold - String<br/>
 	 * Accuracy -Float<br/>
-	 * Precision -Float<br/>
-	 * Recall - Float<br/>
-	 * Model size ratio - Float <br/>
+	 * Model Size -int<br/>
+	 * Double Param - Float<br/>
 	 */
-	private static final String REPORT_FORMAT = "%s\t%s\t%s\t%s\t%s\t%.3f\t%.3f\t%d\t%.3f\n";
-
-	private static int RUN_REPETITION = 10;
+	private static final String REPORT_FORMAT = "%s\t%s\t%s\t%s\t%s\t%.3f\t%d\t%.3f\n";
 
 	private int CROSS_VALIDATION = 10;
+
+	private static int NUMBER_OF_BINS = 10;
 
 	/**
 	 * static Singleton instance
@@ -100,9 +99,13 @@ public class Main {
 		/* MAIN_PROGRAM IS HERE */
 		/************************/
 		String lookupFolder = TEST_FOLDER;
+		String customConfigFile = null;
 
 		// Init using args if possible
-		if (args.length == 1) {
+		if (args.length == 0) {
+			// TODO Custom Config File
+			customConfigFile = "config_test.json";
+		} else if (args.length == 1) {
 			lookupFolder = args[0];
 		} else if (args.length == 2) {
 			lookupFolder = args[0];
@@ -110,6 +113,13 @@ public class Main {
 				CROSS_VALIDATION = Integer.parseInt(args[1]);
 			} catch (Exception e) {
 			}
+		} else if (args.length == 3) {
+			lookupFolder = args[0];
+			try {
+				CROSS_VALIDATION = Integer.parseInt(args[1]);
+			} catch (Exception e) {
+			}
+			customConfigFile = args[2];
 		}
 
 		if (!lookupFolder.endsWith("/"))
@@ -120,7 +130,11 @@ public class Main {
 			System.err.println(lookupFolder);
 
 		@SuppressWarnings("rawtypes")
-		Map<String, List> config = FVSHelper.getInstance().initConfig();
+		Map<String, List> config;
+		if (customConfigFile == null)
+			config = FVSHelper.getInstance().initConfig();
+		else
+			config = FVSHelper.getInstance().initConfig(customConfigFile);
 		FVSHelper.getInstance().logFile(config.toString());
 		FVSHelper.getInstance().logFile(Arrays.asList(folder.list()).toString());
 		List<ClassifierType> cts = FVSHelper.getInstance().getClassifierType(config);
@@ -134,7 +148,6 @@ public class Main {
 		try {
 			mathexpr.setExpression("A*100000");
 		} catch (Exception e1) {
-			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
 		// For each file
@@ -148,16 +161,23 @@ public class Main {
 					// Create discretized set
 					Instances discretized = null;
 					boolean load_discretized = false;
-					String discretized_cachename = String.format("%s_%s", datasetName, dis_alg.toString());
+					String discretized_cachename = String.format("%s_%s", datasetName.replace(".arff", ""),
+							dis_alg.toString());
 					if (FVSHelper.getInstance().isIntermediateExist(discretized_cachename))
 						discretized = FVSHelper.getInstance().loadIntermediateInstances(discretized_cachename);
 					if (discretized == null) {
 						if (data == null) {
 							// Only load data if necessary (no cache)
 							data = loadData(lookupFolder + datasetName);
-							data.deleteAttributeAt(0); // delete timestamp (NCTU, OPP) or user id (HAR)
-							mathexpr.setInputFormat(data);
-							data = Filter.useFilter(data, mathexpr);
+							/*
+							 * Delete timestamp (NCTU and OPP) or user id (HAR)
+							 */
+							data.deleteAttributeAt(0);
+							/* Adjust GPS_X and GPS_Y in NCTU dataset */
+							if (datasetName.contains("agg")) {
+								mathexpr.setInputFormat(data);
+								data = Filter.useFilter(data, mathexpr);
+							}
 						}
 						discretized = discretize(data, dis_alg);
 					} else
@@ -189,12 +209,12 @@ public class Main {
 							double[] result = getModelSize(o_cl);
 							modelSize = result[0];
 							int rule = (int) result[1];
-							if(type == ClassifierType.DecisionStump)
+							if (type == ClassifierType.DecisionStump)
 								rule = 1;
 							originalModelSize.put(type, modelSize);
 							originalRule.put(type, rule);
-							writeReport(REPORT_FOLDER, datasetName, discretized.classIndex(), o_eval, o_cl, 1.0,
-									1.0, "Original", type, dis_alg, "Original", rule);
+							writeReport(REPORT_FOLDER, datasetName, discretized.classIndex(), o_eval, o_cl, 1.0, 1.0,
+									"Original", type, dis_alg, "Original", rule);
 						}
 					}
 					/* For each pre-processing */
@@ -207,12 +227,12 @@ public class Main {
 							double modelSize = Double.NEGATIVE_INFINITY;
 							int rule;
 							// No random without iteration
-							if (p_alg == Preprocessing_Algorithm.Random && thr_alg != ThresholdType.Iteration)
+							if (p_alg == Preprocessing_Algorithm.FVS_Random && thr_alg != ThresholdType.Iteration)
 								continue;
 							// Correlation and iteration cannot work together
-							if (p_alg == Preprocessing_Algorithm.Correlation && thr_alg == ThresholdType.Iteration)
+							if (p_alg == Preprocessing_Algorithm.FVS_Correlation && thr_alg == ThresholdType.Iteration)
 								continue;
-							if (p_alg == Preprocessing_Algorithm.Threshold && thr_alg != ThresholdType.Iteration)
+							if (p_alg == Preprocessing_Algorithm.FVS_Entropy && thr_alg != ThresholdType.Iteration)
 								run_preprocessing = 0;
 							if (thr_alg == ThresholdType.NA)
 								run_preprocessing = 0;
@@ -233,12 +253,11 @@ public class Main {
 									} else {
 										FVSHelper.getInstance().logFile(datasetName + " : " + double_param);
 									}
-									if (p_alg == Preprocessing_Algorithm.Correlation
+									if (p_alg == Preprocessing_Algorithm.FVS_Correlation
 											&& (double_param == 1 || double_param == 0))
 										continue;
 									/*
-									 * Filter the dataset using FVS
-									 * algorithms
+									 * Filter the dataset using FVS algorithms
 									 */
 									Instances filtered = null;
 									filtered = featureValueSelection(discretized, p_alg, thr_alg,
@@ -247,7 +266,7 @@ public class Main {
 									 * Build classifier using filtered data
 									 */
 									for (ClassifierType type : cts) {
-										if(type == ClassifierType.DecisionStump)
+										if (type == ClassifierType.DecisionStump)
 											continue;
 										FVSHelper.getInstance().logFile("Classifier: " + type);
 										Classifier f_cl = buildClassifier(filtered, type);
@@ -268,17 +287,20 @@ public class Main {
 							}
 							/* Run Other Preprocessings */
 							else {
-								if ((fs_cfs && p_alg == Preprocessing_Algorithm.CFS)
-										|| (fs_consistency && p_alg == Preprocessing_Algorithm.Consistency)
-										|| (fs_projection && p_alg == Preprocessing_Algorithm.RandomProjection))
+								if ((fs_cfs && p_alg == Preprocessing_Algorithm.FS_CFS)
+										|| (fs_consistency && p_alg == Preprocessing_Algorithm.FS_Consistency)
+										|| (fs_projection && p_alg == Preprocessing_Algorithm.FS_RandomProjection))
 									continue;
 								Instances filtered = null;
 								filtered = applySelection(discretized, p_alg);
+								String processed_cachename = String.format("%s_%s_%s", datasetName, dis_alg.toString(),
+										p_alg.toString());
+								FVSHelper.getInstance().saveIntermediateInstances(filtered, processed_cachename);
 								/*
 								 * Build classifier based on filtered data
 								 */
 								for (ClassifierType type : cts) {
-									if(type == ClassifierType.DecisionStump)
+									if (type == ClassifierType.DecisionStump)
 										continue;
 									FVSHelper.getInstance().logFile("Classifier: " + type);
 									Classifier f_cl = buildClassifier(filtered, type);
@@ -295,11 +317,11 @@ public class Main {
 								filtered.delete();
 								System.gc();
 								// No need to loop over various "threshold"
-								if (p_alg == Preprocessing_Algorithm.CFS)
+								if (p_alg == Preprocessing_Algorithm.FS_CFS)
 									fs_cfs = true;
-								else if (p_alg == Preprocessing_Algorithm.Consistency)
+								else if (p_alg == Preprocessing_Algorithm.FS_Consistency)
 									fs_consistency = true;
-								else if (p_alg == Preprocessing_Algorithm.RandomProjection)
+								else if (p_alg == Preprocessing_Algorithm.FS_RandomProjection)
 									fs_projection = true;
 							}
 						} // For each threshold type
@@ -349,18 +371,19 @@ public class Main {
 	private PreprocessingType getPreprocessType(Preprocessing_Algorithm p_alg) {
 		PreprocessingType pt;
 		switch (p_alg) {
-		case Correlation:
-		case Random:
-		case Threshold:
+		case FVS_Correlation:
+		case FVS_Random:
+		case FVS_Entropy:
 		case Original:
 			pt = PreprocessingType.FVS;
 			break;
-		case IS:
+		case IS_Reservoir:
+		case IS_Misclassified:
 			pt = PreprocessingType.IS;
 			break;
-		case CFS:
-		case RandomProjection:
-		case Consistency:
+		case FS_CFS:
+		case FS_RandomProjection:
+		case FS_Consistency:
 			pt = PreprocessingType.FS;
 			break;
 		default:
@@ -370,18 +393,12 @@ public class Main {
 	}
 
 	private Instances loadData(String file) throws Exception {
-		DataSource source;
-
-		source = new DataSource(file);
-
+		DataSource source = new DataSource(file);
 		if (IS_DEBUG) {
 			FVSHelper.getInstance().logFile(file);
 			System.err.println(new Date().toString());
 		}
 		Instances data = source.getDataSet();
-		// setting class attribute if the data format does not provide
-		// this information. For example, the XRFF format saves the
-		// class attribute information as well
 		if (data.classIndex() == -1)
 			data.setClassIndex(data.numAttributes() - 1);
 		return data;
@@ -474,6 +491,7 @@ public class Main {
 			((weka.filters.unsupervised.attribute.Discretize) filter).setBins(NUMBER_OF_BINS);
 		} else if (type == DiscretizationType.Frequency) {
 			filter = new weka.filters.unsupervised.attribute.Discretize();
+			((weka.filters.unsupervised.attribute.Discretize) filter).setBins(NUMBER_OF_BINS);
 			((weka.filters.unsupervised.attribute.Discretize) filter).setUseEqualFrequency(true);
 		} else if (type == DiscretizationType.MDL)
 			filter = new weka.filters.supervised.attribute.Discretize();
@@ -509,19 +527,19 @@ public class Main {
 		Instances result = null;
 		Filter filter = null;
 		switch (algo) {
-		case CFS:
+		case FS_CFS:
 			filter = new AttributeSelection();
 			AttributeSelection temp = (AttributeSelection) filter;
 			CfsSubsetEval cfs = new CfsSubsetEval();
 			temp.setEvaluator(cfs);
 			break;
-		case Consistency:
+		case FS_Consistency:
 			filter = new AttributeSelection();
 			temp = (AttributeSelection) filter;
 			ConsistencySubsetEval cs = new ConsistencySubsetEval();
 			temp.setEvaluator(cs);
 			break;
-		case RandomProjection:
+		case FS_RandomProjection:
 			filter = new RandomProjection();
 			break;
 		default:
@@ -547,17 +565,12 @@ public class Main {
 			datasetName = datasetName.split("\\.")[0];
 		}
 		String uid = datasetName;
-		// String copyName = datasetName + params[0].toString() + "_" +
-		// params[1].toString() + "_" + params[2].toString() + "_" +
-		// params[3].toString() + ".txt";
 		datasetName = datasetName + ".txt";
 		File ffolder = new File(folder);
 		ffolder.mkdirs();
 		File f = new File(folder + datasetName);
-		// File f_copy = new File(folder + copyName);
 		boolean new_file = f.createNewFile();
 		FileWriter fileWriter = new FileWriter(f, true);
-		// FileWriter fileWriterCopy = new FileWriter(f_copy, true);
 		if (new_file) {
 			fileWriter.write(REPORT_HEADER);
 		}
@@ -567,23 +580,16 @@ public class Main {
 		TN = eval.incorrect();
 		FP = eval.numFalsePositives(classIndex);
 		FN = eval.numFalseNegatives(classIndex);
-		// fileWriter.append(String.format(REPORT_FORMAT, params[0].toString(),
-		// params[1].toString(), params[2].toString(),
-		// calculateAccuracy(TP, TN, FP, FN), calculatePrecision(TP, FP),
-		// calculateRecall(TP, FN), model_ratio,
-		// double_param));
 		String threshold = double_param + "";
 		if (threshold.trim().equalsIgnoreCase("nan"))
 			threshold = params[3].toString();
-		fileWriter.append(
-				String.format(REPORT_FORMAT, uid, params[0].toString(), params[1].toString(), params[2].toString(),
-						params[3].toString(), calculateAccuracy(TP, TN, FP, FN), model_ratio, params[4], double_param));
+		String discretization = params[2].toString();
+		if (params[2].toString() == DiscretizationType.Binning.toString()
+				|| params[2].toString() == DiscretizationType.Frequency.toString())
+			discretization = discretization + "_" + NUMBER_OF_BINS;
+		fileWriter.append(String.format(REPORT_FORMAT, uid, params[0].toString(), params[1].toString(), discretization,
+				params[3].toString(), calculateAccuracy(TP, TN, FP, FN), params[4], double_param));
 		fileWriter.close();
-		// fileWriterCopy.append(String.format(REPORT_FORMAT,
-		// params[0].toString(), params[1].toString(), params[2].toString(),
-		// params[3].toString(), calculateAccuracy(TP, TN, FP, FN), model_ratio,
-		// params[4], double_param));
-		// fileWriterCopy.close();
 	}
 
 }

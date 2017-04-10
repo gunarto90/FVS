@@ -105,21 +105,21 @@ public class FVS_Filter extends Filter {
 			fvs = new RandomFVS();
 			fvs.input(inst, output, (Double) (0.0));
 			break;
-		case Random:
+		case FVS_Random:
 			fvs = new RandomFVS();
 			double percent_filter = 80.0;
 			if (params.length > 0)
 				percent_filter = params[0];
 			fvs.input(inst, output, percent_filter);
 			break;
-		case Threshold:
+		case FVS_Entropy:
 			fvs = new EntropyFVS(thr_alg);
 			Double threshold = 0.5;
 			if (params.length > 0)
 				threshold = params[0];
 			fvs.input(inst, output, threshold);
 			break;
-		case Correlation:
+		case FVS_Correlation:
 			fvs = new CorrelationFVS(thr_alg);
 			Double topk = 0.1;
 			if (params.length > 0)

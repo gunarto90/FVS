@@ -25,9 +25,9 @@
     ],
     "preprocessing":[
         "original",
-        "random",
-        "threshold",
-        "correlation",
+        "RandomFVS",
+        "EntropyFVS",
+        "CorrelationFVS",
         "cfs",
         "consistency",
         "projection"
