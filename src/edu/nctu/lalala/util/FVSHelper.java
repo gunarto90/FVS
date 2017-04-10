@@ -35,6 +35,7 @@ import edu.nctu.lalala.fvs.CorrelationMatrix;
 import edu.nctu.lalala.fvs.FV;
 import edu.nctu.lalala.fvs.Value;
 import edu.nctu.lalala.main.Main;
+import weka.core.DenseInstance;
 import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.converters.ArffSaver;
@@ -185,7 +186,7 @@ public class FVSHelper {
 	public Instance getFVSFilteredInstance(Instances output, Instance old_inst, List<List<Value>> list,
 			Double[] substitution) {
 		double[] oldValues = old_inst.toDoubleArray();
-		Instance instance = new Instance(old_inst);
+		Instance instance = new DenseInstance(old_inst);
 		// Change with value that is available
 		for (int i = 0; i < oldValues.length - 1; i++) {
 			// System.out.println(oldValues[i]);
@@ -362,8 +363,9 @@ public class FVSHelper {
 			INTERMEDIATE_FOLDER = obj.get("intermediate").toString();
 			if (!INTERMEDIATE_FOLDER.endsWith("\\") && !INTERMEDIATE_FOLDER.endsWith("/"))
 				INTERMEDIATE_FOLDER = INTERMEDIATE_FOLDER + "\\";
-//			System.out.println(INTERMEDIATE_FOLDER);
-//			System.out.println(Arrays.asList(new File(INTERMEDIATE_FOLDER).list()));
+			// System.out.println(INTERMEDIATE_FOLDER);
+			// System.out.println(Arrays.asList(new
+			// File(INTERMEDIATE_FOLDER).list()));
 		} catch (JSONException e) {
 			// JSON Parsing error
 			e.printStackTrace();

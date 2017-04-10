@@ -1,14 +1,8 @@
 package edu.nctu.lalala.main;
 
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.OpenOption;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
@@ -35,7 +29,7 @@ import weka.core.Instances;
 import weka.core.converters.ConverterUtils.DataSource;
 import weka.filters.Filter;
 import weka.filters.supervised.attribute.AttributeSelection;
-import weka.filters.unsupervised.attribute.RELAGGS;
+import weka.filters.unsupervised.attribute.MathExpression;
 import weka.filters.unsupervised.attribute.RandomProjection;
 
 @SuppressWarnings("unused")
@@ -134,6 +128,15 @@ public class Main {
 		List<ThresholdType> tts = FVSHelper.getInstance().getThresholdType(config);
 		List<Preprocessing_Algorithm> fas = FVSHelper.getInstance().getPreprocessing_Algorithm(config);
 
+		MathExpression mathexpr = new MathExpression();
+		mathexpr.setIgnoreRange("13-14");
+		mathexpr.setInvertSelection(true);
+		try {
+			mathexpr.setExpression("A*100000");
+		} catch (Exception e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
 		// For each file
 		for (String datasetName : folder.list()) {
 			try {
@@ -152,7 +155,9 @@ public class Main {
 						if (data == null) {
 							// Only load data if necessary (no cache)
 							data = loadData(lookupFolder + datasetName);
-							data.deleteAttributeAt(0); // delete timestamp
+							data.deleteAttributeAt(0); // delete timestamp (NCTU, OPP) or user id (HAR)
+							mathexpr.setInputFormat(data);
+							data = Filter.useFilter(data, mathexpr);
 						}
 						discretized = discretize(data, dis_alg);
 					} else
@@ -519,9 +524,6 @@ public class Main {
 			break;
 		case RandomProjection:
 			filter = new RandomProjection();
-			break;
-		case RELLAGS:
-			filter = new RELAGGS();
 			break;
 		default:
 			break;

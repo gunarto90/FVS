@@ -22,10 +22,10 @@ import edu.nctu.lalala.fvs.interfaces.IFVS;
 import edu.nctu.lalala.util.MathHelper;
 import weka.core.Capabilities;
 import weka.core.Capabilities.Capability;
+import weka.core.DenseInstance;
 import weka.core.Instance;
 import weka.core.Instances;
 import weka.filters.Filter;
-
 
 /**
  * 
@@ -98,37 +98,40 @@ public class FVS_Filter extends Filter {
 		Instances inst = getInputFormat();
 		Instances output = getOutputFormat();
 		IFVS fvs = null;
-		
+
 		// Apply removal based on Algorithm
 		switch (this.algo) {
 		case Original:
 			fvs = new RandomFVS();
-			fvs.input(inst, output, (Double)(0.0));
+			fvs.input(inst, output, (Double) (0.0));
 			break;
 		case Random:
 			fvs = new RandomFVS();
 			double percent_filter = 80.0;
-			if (params.length > 0) percent_filter = params[0];
+			if (params.length > 0)
+				percent_filter = params[0];
 			fvs.input(inst, output, percent_filter);
 			break;
 		case Threshold:
 			fvs = new EntropyFVS(thr_alg);
 			Double threshold = 0.5;
-			if (params.length > 0) threshold = params[0];
+			if (params.length > 0)
+				threshold = params[0];
 			fvs.input(inst, output, threshold);
 			break;
 		case Correlation:
 			fvs = new CorrelationFVS(thr_alg);
 			Double topk = 0.1;
-			if (params.length > 0) topk = params[0];
+			if (params.length > 0)
+				topk = params[0];
 			fvs.input(inst, output, topk);
 			break;
 		default:
 			fvs = new RandomFVS();
-			fvs.input(inst, output, (Double)(0.0));
+			fvs.input(inst, output, (Double) (0.0));
 			break;
 		}
-		
+
 		fvs.applyFVS();
 		output = fvs.output();
 
@@ -193,7 +196,7 @@ public class FVS_Filter extends Filter {
 	private Instance getFVSFilteredInstance(Instances output, Instance old_inst, List<List<Value>> list,
 			Double[] substitution) {
 		double[] oldValues = old_inst.toDoubleArray();
-		Instance instance = new Instance(old_inst);
+		Instance instance = new DenseInstance(old_inst);
 		// Change with value that is available
 		for (int i = 0; i < oldValues.length - 1; i++) {
 			// System.out.println(oldValues[i]);

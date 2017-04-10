@@ -6,13 +6,19 @@
 	<name>FeatureValue</name>
 	<url>http://maven.apache.org</url>
 	<properties>
-		<weka.version>3.6.6</weka.version>
+		<weka.version>3.8.0</weka.version>
 	</properties>
 	<dependencies>
 		<dependency>
 			<groupId>nz.ac.waikato.cms.weka</groupId>
 			<artifactId>weka-stable</artifactId>
 			<version>${weka.version}</version>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/nz.ac.waikato.cms.weka/consistencySubsetEval -->
+		<dependency>
+		    <groupId>nz.ac.waikato.cms.weka</groupId>
+		    <artifactId>consistencySubsetEval</artifactId>
+		    <version>1.0.3</version>
 		</dependency>
 		<dependency>
 			<groupId>com.google.guava</groupId>
