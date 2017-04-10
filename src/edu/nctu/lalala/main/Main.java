@@ -361,7 +361,6 @@ public class Main {
 		case CFS:
 		case RandomProjection:
 		case Consistency:
-		case RELLAGS:
 			pt = PreprocessingType.FS;
 			break;
 		default:

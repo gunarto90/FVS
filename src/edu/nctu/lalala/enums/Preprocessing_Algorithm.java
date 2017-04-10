@@ -6,5 +6,5 @@ public enum Preprocessing_Algorithm {
 	// IS
 	IS,
 	// FS
-	CFS, Consistency, RandomProjection, RELLAGS
+	CFS, Consistency, RandomProjection
 }
