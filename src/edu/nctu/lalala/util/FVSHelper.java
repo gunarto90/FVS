@@ -438,7 +438,7 @@ public class FVSHelper {
 				result.add(ThresholdType.Mean);
 			else if (s.equalsIgnoreCase("meanmin"))
 				result.add(ThresholdType.MeanMin);
-			else if (s.equalsIgnoreCase("minplus"))
+			else if (s.equalsIgnoreCase("meanplus"))
 				result.add(ThresholdType.MeanPlus);
 		}
 		return result;
@@ -463,6 +463,10 @@ public class FVSHelper {
 				result.add(Preprocessing_Algorithm.FS_Consistency);
 			else if (s.equalsIgnoreCase("projection"))
 				result.add(Preprocessing_Algorithm.FS_RandomProjection);
+			else if (s.equalsIgnoreCase("reservoir"))
+				result.add(Preprocessing_Algorithm.IS_Reservoir);
+			else if (s.equalsIgnoreCase("misclassified"))
+				result.add(Preprocessing_Algorithm.IS_Misclassified);
 		}
 		return result;
 	}
