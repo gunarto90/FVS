@@ -30,7 +30,10 @@ import weka.core.converters.ConverterUtils.DataSource;
 import weka.filters.Filter;
 import weka.filters.supervised.attribute.AttributeSelection;
 import weka.filters.unsupervised.attribute.MathExpression;
+import weka.filters.unsupervised.attribute.PrincipalComponents;
 import weka.filters.unsupervised.attribute.RandomProjection;
+import weka.filters.unsupervised.instance.RemoveMisclassified;
+import weka.filters.unsupervised.instance.ReservoirSample;
 
 @SuppressWarnings("unused")
 // Updated March 3rd, 2016
@@ -188,7 +191,10 @@ public class Main {
 					// System.out.println("Discretization finished");
 					boolean fs_cfs = false;
 					boolean fs_consistency = false;
-					boolean fs_projection = false;
+					boolean ft_projection = false;
+					boolean ft_pca = false;
+					boolean is_reservoir = false;
+					boolean is_missclassified = false;
 					Map<ClassifierType, Double> originalModelSize = new HashMap<>();
 					Map<ClassifierType, Integer> originalRule = new HashMap<>();
 					/* Initialize the original model size and rule */
@@ -221,6 +227,7 @@ public class Main {
 					for (Preprocessing_Algorithm p_alg : fas) {
 						FVSHelper.getInstance().logFile("Preprocessing: " + p_alg);
 						pt = getPreprocessType(p_alg);
+						FVSHelper.getInstance().logFile("Preprocess type: " + pt);
 						// For each threshold type
 						for (ThresholdType thr_alg : tts) {
 							int run_preprocessing = 1;
@@ -287,9 +294,14 @@ public class Main {
 							}
 							/* Run Other Preprocessings */
 							else {
+								System.out.println(p_alg.toString());
 								if ((fs_cfs && p_alg == Preprocessing_Algorithm.FS_CFS)
 										|| (fs_consistency && p_alg == Preprocessing_Algorithm.FS_Consistency)
-										|| (fs_projection && p_alg == Preprocessing_Algorithm.FS_RandomProjection))
+										|| (ft_projection && p_alg == Preprocessing_Algorithm.FT_RandomProjection)
+										|| (ft_pca && p_alg == Preprocessing_Algorithm.FT_PCA)
+										|| (is_reservoir && p_alg == Preprocessing_Algorithm.IS_Reservoir)
+										|| (is_missclassified && p_alg == Preprocessing_Algorithm.IS_Misclassified)
+									)
 									continue;
 								Instances filtered = null;
 								filtered = applySelection(discretized, p_alg);
@@ -321,8 +333,14 @@ public class Main {
 									fs_cfs = true;
 								else if (p_alg == Preprocessing_Algorithm.FS_Consistency)
 									fs_consistency = true;
-								else if (p_alg == Preprocessing_Algorithm.FS_RandomProjection)
-									fs_projection = true;
+								else if (p_alg == Preprocessing_Algorithm.FT_RandomProjection)
+									ft_projection = true;
+								else if (p_alg == Preprocessing_Algorithm.FT_PCA)
+									ft_pca = true;
+								else if (p_alg == Preprocessing_Algorithm.IS_Reservoir)
+									is_reservoir = true;
+								else if (p_alg == Preprocessing_Algorithm.IS_Misclassified)
+									is_missclassified = true;
 							}
 						} // For each threshold type
 					} // For each preprocessing algorithm
@@ -381,13 +399,21 @@ public class Main {
 		case IS_Misclassified:
 			pt = PreprocessingType.IS;
 			break;
-		case FS_CFS:
-		case FS_RandomProjection:
+		case FT_RandomProjection:
+		case FT_PCA:
 		case FS_Consistency:
+		case FS_CFS:
+		case FS_CorrAttr:
+		case FS_GainRatio:
+		case FS_Kernel:
+		case FS_GreedyStepwise:
+		case FS_Relief:
+		case FS_SymmetricUncertainty:
+		case FS_Wrapper:
 			pt = PreprocessingType.FS;
 			break;
 		default:
-			pt = PreprocessingType.FVS;
+			pt = PreprocessingType.None;
 		}
 		return pt;
 	}
@@ -539,8 +565,24 @@ public class Main {
 			ConsistencySubsetEval cs = new ConsistencySubsetEval();
 			temp.setEvaluator(cs);
 			break;
-		case FS_RandomProjection:
-			filter = new RandomProjection();
+		case FT_RandomProjection:
+			RandomProjection rp = new RandomProjection();
+			filter = rp;
+			break;
+		case FT_PCA:
+			PrincipalComponents pca = new PrincipalComponents();
+			pca.setMaximumAttributes(data.numAttributes());
+			filter = pca;
+			break;
+		case IS_Reservoir:
+			ReservoirSample rs = new ReservoirSample();
+			filter = rs;
+			break;
+		case IS_Misclassified:
+			RemoveMisclassified rmc = new RemoveMisclassified();
+			rmc.setClassifier(new J48());
+			rmc.setClassIndex(data.classIndex());
+			filter = rmc;
 			break;
 		default:
 			break;

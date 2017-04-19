@@ -30,7 +30,10 @@
         "CorrelationFVS",
         "cfs",
         "consistency",
-        "projection"
+        "projection",
+        "pca",
+        "reservoir",
+        "misclassified"
     ],
     "folder_setup": {
         "intermediate":"./intermediate/"

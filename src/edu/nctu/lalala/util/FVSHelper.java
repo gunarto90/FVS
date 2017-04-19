@@ -462,7 +462,9 @@ public class FVSHelper {
 			else if (s.equalsIgnoreCase("consistency"))
 				result.add(Preprocessing_Algorithm.FS_Consistency);
 			else if (s.equalsIgnoreCase("projection"))
-				result.add(Preprocessing_Algorithm.FS_RandomProjection);
+				result.add(Preprocessing_Algorithm.FT_RandomProjection);
+			else if (s.equalsIgnoreCase("pca"))
+				result.add(Preprocessing_Algorithm.FT_PCA);
 			else if (s.equalsIgnoreCase("reservoir"))
 				result.add(Preprocessing_Algorithm.IS_Reservoir);
 			else if (s.equalsIgnoreCase("misclassified"))

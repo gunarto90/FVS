@@ -29,6 +29,14 @@ public enum Preprocessing_Algorithm {
 	 * for removing outliers.
 	 */
 	IS_Misclassified,
+	/* Feature Transformation */
+	/**
+	 * Fradkin, Dmitriy, and David Madigan. "Experiments with random projections
+	 * for machine learning." Proceedings of the ninth ACM SIGKDD international
+	 * conference on Knowledge discovery and data mining. ACM, 2003.
+	 */
+	FT_RandomProjection,
+	FT_PCA,
 	/* Feature Selection methods */
 	/**
 	 * Hall, Mark A. Correlation-based feature selection for machine learning.
@@ -40,12 +48,6 @@ public enum Preprocessing_Algorithm {
 	 * selection-a filter solution." ICML. Vol. 96. 1996.
 	 */
 	FS_Consistency,
-	/**
-	 * Fradkin, Dmitriy, and David Madigan. "Experiments with random projections
-	 * for machine learning." Proceedings of the ninth ACM SIGKDD international
-	 * conference on Knowledge discovery and data mining. ACM, 2003.
-	 */
-	FS_RandomProjection,
 	/**
 	 * Bennett, K. P., and M. J. Embrechts. "An optimization perspective on
 	 * kernel partial least squares regression." Nato Science Series sub series
