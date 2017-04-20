@@ -203,24 +203,28 @@ public class Main {
 						double modelSize = Double.NEGATIVE_INFINITY;
 						modelSize = originalModelSize.getOrDefault(type, Double.NEGATIVE_INFINITY);
 						if (modelSize == Double.NEGATIVE_INFINITY) {
-							Classifier o_cl = null;
-							Evaluation o_eval = null;
-							// Build classifier based on original data
-							o_cl = buildClassifier(discretized, type);
-							// Evaluate the dataset
-							o_eval = new Evaluation(discretized);
-							// Cross validate dataset
-							o_eval.crossValidateModel(o_cl, discretized, CROSS_VALIDATION, new Random(1));
-							// Variables for evaluation
-							double[] result = getModelSize(o_cl);
-							modelSize = result[0];
-							int rule = (int) result[1];
-							if (type == ClassifierType.DecisionStump)
-								rule = 1;
-							originalModelSize.put(type, modelSize);
-							originalRule.put(type, rule);
-							writeReport(REPORT_FOLDER, datasetName, discretized.classIndex(), o_eval, o_cl, 1.0, 1.0,
-									"Original", type, dis_alg, "Original", rule);
+							int rule = 0;
+							if (!FVSHelper.getInstance().getSkipOriginal()){
+								Classifier o_cl = null;
+								Evaluation o_eval = null;
+								// Build classifier based on original data
+								o_cl = buildClassifier(discretized, type);
+								// Evaluate the dataset
+								o_eval = new Evaluation(discretized);
+								// Cross validate dataset
+								o_eval.crossValidateModel(o_cl, discretized, CROSS_VALIDATION, new Random(1));
+								// Variables for evaluation
+								double[] result = getModelSize(o_cl);
+								modelSize = result[0];
+								rule = (int) result[1];
+								if (type == ClassifierType.DecisionStump)
+									rule = 1;
+								originalModelSize.put(type, modelSize);
+								originalRule.put(type, rule);
+								writeReport(REPORT_FOLDER, datasetName, discretized.classIndex(), o_eval, o_cl, 1.0, 1.0,
+										"Original", type, dis_alg, "Original", rule);
+								System.out.println("Writing original");
+							}
 						}
 					}
 					/* For each pre-processing */
@@ -283,7 +287,10 @@ public class Main {
 										f_eval.crossValidateModel(f_cl, filtered, CROSS_VALIDATION, new Random(1));
 										// Compare model size
 										double[] result = getModelSize(f_cl);
-										modelSize = result[0] / originalModelSize.get(type);
+										Double ori = originalModelSize.get(type);
+										if (ori == null)
+											ori = 1.0;
+										modelSize = result[0] / ori;
 										rule = (int) result[1];
 										writeReport(REPORT_FOLDER, datasetName, filtered.classIndex(), f_eval, f_cl,
 												modelSize, double_param, p_alg, type, dis_alg, thr_alg, rule);
@@ -321,7 +328,10 @@ public class Main {
 									// Cross validate dataset
 									f_eval.crossValidateModel(f_cl, filtered, CROSS_VALIDATION, new Random(1));
 									double[] result = getModelSize(f_cl);
-									modelSize = result[0] / originalModelSize.get(type);
+									Double ori = originalModelSize.get(type);
+									if (ori == null)
+										ori = 1.0;
+									modelSize = result[0] / ori;
 									rule = (int) result[1];
 									writeReport(REPORT_FOLDER, datasetName, filtered.classIndex(), f_eval, f_cl,
 											modelSize, 0.0, p_alg, type, dis_alg, thr_alg, rule);

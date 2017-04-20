@@ -37,5 +37,6 @@
     ],
     "folder_setup": {
         "intermediate":"./intermediate/"
-    }
+    },
+    "skip_original": "False"
 }

@@ -45,6 +45,7 @@ public class FVSHelper {
 	private static final String CONFIG_FOLDER = "config" + "/";
 	private static final String LOG_FOLDER = "log" + "/";
 	private String INTERMEDIATE_FOLDER = "intermediate" + "/";
+	private boolean SKIP_ORIGINAL = false;
 
 	private FVSHelper() {
 		System.err.println(timestamp);
@@ -373,6 +374,16 @@ public class FVSHelper {
 			INTERMEDIATE_FOLDER = obj.get("intermediate").toString();
 			if (!INTERMEDIATE_FOLDER.endsWith("\\") && !INTERMEDIATE_FOLDER.endsWith("/"))
 				INTERMEDIATE_FOLDER = INTERMEDIATE_FOLDER + "\\";
+			/* Initialize skip header */
+			try {
+				String skip = rootObject.getString("skip_original");
+				if (skip != null && skip.equalsIgnoreCase("true")) {
+					SKIP_ORIGINAL = true;
+				}
+			} catch (Exception ex) {
+
+			}
+			System.out.println("Skip original : " + SKIP_ORIGINAL);
 			// System.out.println(INTERMEDIATE_FOLDER);
 			// System.out.println(Arrays.asList(new
 			// File(INTERMEDIATE_FOLDER).list()));
@@ -471,5 +482,9 @@ public class FVSHelper {
 				result.add(Preprocessing_Algorithm.IS_Misclassified);
 		}
 		return result;
+	}
+
+	public boolean getSkipOriginal() {
+		return SKIP_ORIGINAL;
 	}
 }
