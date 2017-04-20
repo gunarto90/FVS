@@ -293,7 +293,7 @@ public class Main {
 								System.gc();
 							}
 							/* Run Other Preprocessings */
-							else {
+							else if (pt != PreprocessingType.None) {
 								System.out.println(p_alg.toString());
 								if ((fs_cfs && p_alg == Preprocessing_Algorithm.FS_CFS)
 										|| (fs_consistency && p_alg == Preprocessing_Algorithm.FS_Consistency)
@@ -389,10 +389,12 @@ public class Main {
 	private PreprocessingType getPreprocessType(Preprocessing_Algorithm p_alg) {
 		PreprocessingType pt;
 		switch (p_alg) {
+		case Original:
+			pt = PreprocessingType.None;
+			break;
 		case FVS_Correlation:
 		case FVS_Random:
 		case FVS_Entropy:
-		case Original:
 			pt = PreprocessingType.FVS;
 			break;
 		case IS_Reservoir:
