@@ -12,6 +12,8 @@ import edu.nctu.lalala.util.FVSHelper;
 import weka.attributeSelection.CfsSubsetEval;
 import weka.attributeSelection.ConsistencySubsetEval;
 import weka.classifiers.Classifier;
+import weka.classifiers.bayes.NaiveBayes;
+import weka.classifiers.functions.Logistic;
 import weka.classifiers.functions.SMO;
 import weka.classifiers.rules.JRip;
 import weka.classifiers.trees.DecisionStump;
@@ -64,7 +66,7 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 		double[] accuracies = new double[folds];
 		double[] models = new double[folds];
 		int[] rules = new int[folds];
-		
+
 		/* To get the base model size -- weka dump */
 		double baseModel = 0.0;
 		Classifier tempClassifier = null;
@@ -150,19 +152,17 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 	private double[] getModelSize(Classifier cl) {
 		double[] result = new double[2];
 		double modelSize = 0.0;
-		double rule = 0.0;
+		double rule = 0.0; // Only for J48 and Jrip
 		try {
 			J48 a = (J48) cl;
 			rule = a.measureNumRules();
 		} catch (Exception e) {
-
 		}
 		if (rule == 0.0) {
 			try {
 				JRip a = (JRip) cl;
 				rule = a.getRuleset().size();
 			} catch (Exception e) {
-
 			}
 		}
 		ObjectOutputStream oos;
@@ -175,7 +175,7 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 			modelSize = f.length();
 			f.deleteOnExit();
 		} catch (IOException e) {
-			
+
 		}
 		result[0] = modelSize;
 		result[1] = rule;
@@ -230,7 +230,7 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 		}
 		return result;
 	}
-	
+
 	private Classifier buildClassifier(Instances data, ClassifierType type) throws Exception {
 		Classifier c = null;
 		if (type == null)
@@ -257,6 +257,12 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 			break;
 		case DecisionStump:
 			c = new DecisionStump();
+			break;
+		case Bayes:
+			c = new NaiveBayes();
+			break;
+		case Logistic:
+			c = new Logistic();
 			break;
 		default:
 			c = new J48();

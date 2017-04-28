@@ -409,6 +409,12 @@ public class FVSHelper {
 				result.add(ClassifierType.JRip_Pruned);
 			else if (s.equalsIgnoreCase("decision_stump"))
 				result.add(ClassifierType.DecisionStump);
+			else if (s.equalsIgnoreCase("bayes"))
+				result.add(ClassifierType.Bayes);
+			else if (s.equalsIgnoreCase("logistic"))
+				result.add(ClassifierType.Logistic);
+			else if (s.equalsIgnoreCase("svm"))
+				result.add(ClassifierType.SMO);
 		}
 		return result;
 	}

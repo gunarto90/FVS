@@ -5,7 +5,10 @@
         "j48_pruned",
         "jrip",
         "jrip_pruned",
-        "decision_stump"
+        "decision_stump",
+        "bayes",
+        "logistic",
+        "svm"
     ],
     "discretization":[
         "none",
