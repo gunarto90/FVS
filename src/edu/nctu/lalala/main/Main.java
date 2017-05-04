@@ -30,6 +30,7 @@ import weka.core.Instances;
 import weka.core.converters.ConverterUtils.DataSource;
 import weka.filters.Filter;
 import weka.filters.supervised.attribute.AttributeSelection;
+import weka.filters.unsupervised.attribute.AddNoise;
 import weka.filters.unsupervised.attribute.MathExpression;
 import weka.filters.unsupervised.attribute.PrincipalComponents;
 import weka.filters.unsupervised.attribute.RandomProjection;
@@ -39,8 +40,6 @@ import weka.filters.unsupervised.instance.ReservoirSample;
 @SuppressWarnings("unused")
 // Updated March 3rd, 2016
 public class Main {
-
-	public static final boolean IS_DEBUG = true;
 	private static final boolean IS_LOG_INTERMEDIATE = true;
 	private static final double[] DOUBLE_PARAMS = { 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1 };
 
@@ -49,7 +48,7 @@ public class Main {
 	private static final String NUMERIC_FOLDER = DEFAULT_DATASET_FOLDER + "/numeric/";
 	private static final String TEST_FOLDER = DEFAULT_DATASET_FOLDER + "/run/";
 	private static final String REPORT_FOLDER = "report" + "/";
-	private static final String REPORT_HEADER = "User\tMethod\tClassifier\tDiscretization\tThreshold\tAccuracy\tModel Size\tDouble param\n";
+	private static final String REPORT_HEADER = "User\tMethod\tClassifier\tDiscretization\tThreshold\tAccuracy\t#Rules\tDouble param\tFile Size\tRunning Time(ms)\tMemory Usage(KB)\tNoise\n";
 	/**
 	 * Method - String<br/>
 	 * Classification Algorithm - String<br/>
@@ -59,9 +58,9 @@ public class Main {
 	 * Model Size -int<br/>
 	 * Double Param - Float<br/>
 	 */
-	private static final String REPORT_FORMAT = "%s\t%s\t%s\t%s\t%s\t%.3f\t%d\t%.3f\n";
+	private static final String REPORT_FORMAT = "%s\t%s\t%s\t%s\t%s\t%.3f\t%d\t%.3f\t%d\t%.3f\t%.3f\t%d\n";
 
-	private int CROSS_VALIDATION = 10;
+	private int CROSS_VALIDATION = 5;
 
 	private static int NUMBER_OF_BINS = 10;
 
@@ -130,7 +129,7 @@ public class Main {
 			lookupFolder = lookupFolder + "/";
 
 		File folder = new File(lookupFolder);
-		if (IS_DEBUG)
+		if (FVSHelper.getInstance().getDebugStatus())
 			System.err.println(lookupFolder);
 
 		@SuppressWarnings("rawtypes")
@@ -147,7 +146,7 @@ public class Main {
 		List<Preprocessing_Algorithm> fas = FVSHelper.getInstance().getPreprocessing_Algorithm(config);
 
 		MathExpression mathexpr = new MathExpression();
-		mathexpr.setIgnoreRange("13-14");
+		mathexpr.setIgnoreRange("4-6,13-14");
 		mathexpr.setInvertSelection(true);
 		try {
 			mathexpr.setExpression("A*100000");
@@ -156,6 +155,8 @@ public class Main {
 		}
 		// For each file
 		for (String datasetName : folder.list()) {
+			if(!datasetName.endsWith(".arff"))
+				continue;
 			try {
 				// Load original data
 				Instances data = null;
@@ -165,6 +166,7 @@ public class Main {
 					// Create discretized set
 					Instances discretized = null;
 					boolean load_discretized = false;
+					String noise_name = "";
 					String discretized_cachename = String.format("%s_%s", datasetName.replace(".arff", ""),
 							dis_alg.toString());
 					if (FVSHelper.getInstance().isIntermediateExist(discretized_cachename))
@@ -197,140 +199,70 @@ public class Main {
 					boolean is_reservoir = false;
 					boolean is_missclassified = false;
 					/* Initialize the original model size and rule */
-					for (ClassifierType type : cts) {
-						FVSHelper.getInstance().logFile("Classifier: " + type);
-						double modelSize = Double.NEGATIVE_INFINITY;
-						if (modelSize == Double.NEGATIVE_INFINITY) {
-							int rule = 0;
-							if (!FVSHelper.getInstance().getSkipOriginal()) {
-								FVSEvaluation o_eval = new FVSEvaluation(discretized, REPORT_FORMAT, REPORT_HEADER,
-										NUMBER_OF_BINS);
-								// Cross validate dataset
-								o_eval.stratifiedFold(type, CROSS_VALIDATION);
-								writeReport(REPORT_FOLDER, datasetName, discretized.classIndex(), o_eval, 1.0, 1.0,
-										"Original", type, dis_alg, "Original");
-								System.out.println("Writing original");
-							}
-						}
-					}
+
 					/* For each pre-processing */
 					for (Preprocessing_Algorithm p_alg : fas) {
 						FVSHelper.getInstance().logFile("Preprocessing: " + p_alg);
-						pt = getPreprocessType(p_alg);
+						pt = FVSHelper.getInstance().getPreprocessType(p_alg);
 						FVSHelper.getInstance().logFile("Preprocess type: " + pt);
-
-						if (pt == PreprocessingType.FVS) {
-							// For each threshold type
-							for (ThresholdType thr_alg : tts) {
-								int run_preprocessing = 1;
-								// No random without iteration
-								if (p_alg == Preprocessing_Algorithm.FVS_Random && thr_alg != ThresholdType.Iteration)
-									continue;
-								// Correlation and iteration cannot work
-								// together
-								if (p_alg == Preprocessing_Algorithm.FVS_Correlation
-										&& thr_alg == ThresholdType.Iteration)
-									continue;
-								if (p_alg == Preprocessing_Algorithm.FVS_Entropy && thr_alg != ThresholdType.Iteration)
-									run_preprocessing = 0;
-								if (thr_alg == ThresholdType.NA)
-									run_preprocessing = 0;
-								/* Run FVS */
-								double[] temp = null;
-								if (run_preprocessing > 0) {
-									temp = DOUBLE_PARAMS;
-								} else {
-									// Run once with the selected parameter
-									temp = new double[] { 0.0 };
-								}
-								// Execution
-								for (int i = 0; i < temp.length; i++) {
-									Double double_param = temp[i];
-									if (run_preprocessing <= 0) {
-										FVSHelper.getInstance().logFile(datasetName + " : " + thr_alg);
-									} else {
-										FVSHelper.getInstance().logFile(datasetName + " : " + double_param);
-									}
-									if (p_alg == Preprocessing_Algorithm.FVS_Correlation
-											&& (double_param == 1 || double_param == 0))
+						if (p_alg == Preprocessing_Algorithm.Original) {
+							runEvaluation(cts, datasetName, dis_alg, discretized, p_alg, "Original", -999,
+									ThresholdType.NA, null);
+						} else if (pt == PreprocessingType.FVS) {
+							if (p_alg == Preprocessing_Algorithm.FVS_Random) {
+								for (int i = 0; i < DOUBLE_PARAMS.length; i++) {
+									Double double_param = DOUBLE_PARAMS[i];
+									if ((double_param == 1 || double_param == 0))
 										continue;
-									/*
-									 * Filter the dataset using FVS algorithms
-									 */
-									Instances filtered = null;
-									filtered = featureValueSelection(discretized, p_alg, thr_alg,
-											discretized.numInstances(), double_param);
-									/*
-									 * Build classifier using filtered data
-									 */
-									for (ClassifierType type : cts) {
-										if (type == ClassifierType.DecisionStump)
-											continue;
-										FVSHelper.getInstance().logFile("Classifier: " + type);
-										// Evaluate the dataset
-										FVSEvaluation f_eval = new FVSEvaluation(filtered, REPORT_FORMAT, REPORT_HEADER,
-												NUMBER_OF_BINS);
-										// Cross validate dataset
-										f_eval.stratifiedFold(type, CROSS_VALIDATION);
-										writeReport(REPORT_FOLDER, datasetName, filtered.classIndex(), f_eval,
-												double_param, p_alg, type, dis_alg, thr_alg);
-									}
-									filtered.delete();
+									Filter filter = getFVS(p_alg, ThresholdType.Iteration, discretized.numInstances(),
+											double_param);
+									runEvaluation(cts, datasetName, dis_alg, discretized, p_alg,
+											("FVS Random : " + double_param), double_param, ThresholdType.Iteration,
+											filter);
 								}
-								System.gc();
+							} else if (p_alg == Preprocessing_Algorithm.FVS_Entropy) {
+								for (ThresholdType thr_alg : tts) {
+									if (thr_alg == ThresholdType.NA)
+										continue;
+									if (thr_alg == ThresholdType.Iteration) {
+										for (int i = 0; i < DOUBLE_PARAMS.length; i++) {
+											Double double_param = DOUBLE_PARAMS[i];
+											if ((double_param == 1 || double_param == 0))
+												continue;
+											Filter filter = getFVS(p_alg, ThresholdType.Iteration,
+													discretized.numInstances(), double_param);
+											runEvaluation(cts, datasetName, dis_alg, discretized, p_alg,
+													("FVS Entropy Iteration : " + double_param), double_param,
+													ThresholdType.Iteration, filter);
+										}
+									} else {
+										Filter filter = getFVS(p_alg, thr_alg, discretized.numInstances(), 0.0);
+										runEvaluation(cts, datasetName, dis_alg, discretized, p_alg,
+												("FVS Entropy : " + thr_alg), 0.0, thr_alg, filter);
+									}
+								}
+							} else if (p_alg == Preprocessing_Algorithm.FVS_Correlation) {
+								for (ThresholdType thr_alg : tts) {
+									if (thr_alg == ThresholdType.NA || thr_alg == ThresholdType.Iteration)
+										continue;
+									for (int i = 0; i < DOUBLE_PARAMS.length; i++) {
+										Double double_param = DOUBLE_PARAMS[i];
+										if ((double_param == 1 || double_param == 0))
+											continue;
+										Filter filter = getFVS(p_alg, thr_alg, discretized.numInstances(),
+												double_param);
+										runEvaluation(cts, datasetName, dis_alg,
+												discretized, p_alg, String.format("FVS Correlation (%s) : %.1f ",
+														thr_alg.toString(), double_param),
+												double_param, thr_alg, filter);
+									}
+								}
 							}
+						} else if (pt != PreprocessingType.None) {
+							Filter filter = getFilter(discretized, p_alg);
+							runEvaluation(cts, datasetName, dis_alg, discretized, p_alg, p_alg.toString(), 0.0,
+									ThresholdType.NA, filter);
 						}
-
-						/* Run Other Preprocessings */
-						else if (pt != PreprocessingType.None) {
-							System.out.println(p_alg.toString());
-							if ((fs_cfs && p_alg == Preprocessing_Algorithm.FS_CFS)
-									|| (fs_consistency && p_alg == Preprocessing_Algorithm.FS_Consistency)
-									|| (ft_projection && p_alg == Preprocessing_Algorithm.FT_RandomProjection)
-									|| (ft_pca && p_alg == Preprocessing_Algorithm.FT_PCA)
-									|| (is_reservoir && p_alg == Preprocessing_Algorithm.IS_Reservoir)
-									|| (is_missclassified && p_alg == Preprocessing_Algorithm.IS_Misclassified))
-								continue;
-							Instances filtered = null;
-							filtered = applySelection(discretized, p_alg);
-							String processed_cachename = String.format("%s_%s_%s", datasetName, dis_alg.toString(),
-									p_alg.toString());
-							FVSHelper.getInstance().saveIntermediateInstances(filtered, processed_cachename);
-							/*
-							 * Build classifier based on filtered data
-							 */
-							double modelSize;
-							int rule;
-							for (ClassifierType type : cts) {
-								if (type == ClassifierType.DecisionStump)
-									continue;
-								FVSHelper.getInstance().logFile("Classifier: " + type);
-								// Evaluate the dataset
-								FVSEvaluation f_eval = new FVSEvaluation(filtered, REPORT_FORMAT, REPORT_HEADER,
-										NUMBER_OF_BINS);
-								// Cross validate dataset
-								f_eval.stratifiedFold(type, CROSS_VALIDATION);
-								// f_eval.crossValidateModel(f_cl, filtered,
-								// CROSS_VALIDATION, new Random(1));
-								writeReport(REPORT_FOLDER, datasetName, filtered.classIndex(), f_eval, 0.0, p_alg, type,
-										dis_alg, ThresholdType.NA);
-							}
-							filtered.delete();
-							System.gc();
-							// No need to loop over various "threshold"
-							if (p_alg == Preprocessing_Algorithm.FS_CFS)
-								fs_cfs = true;
-							else if (p_alg == Preprocessing_Algorithm.FS_Consistency)
-								fs_consistency = true;
-							else if (p_alg == Preprocessing_Algorithm.FT_RandomProjection)
-								ft_projection = true;
-							else if (p_alg == Preprocessing_Algorithm.FT_PCA)
-								ft_pca = true;
-							else if (p_alg == Preprocessing_Algorithm.IS_Reservoir)
-								is_reservoir = true;
-							else if (p_alg == Preprocessing_Algorithm.IS_Misclassified)
-								is_missclassified = true;
-						} // For each threshold type
 					} // For each preprocessing algorithm
 					System.out.println();
 					if (data != null)
@@ -339,7 +271,7 @@ public class Main {
 				} // For each discretization
 			} // Try for each file
 			catch (Exception e) {
-				if (IS_DEBUG)
+				if (FVSHelper.getInstance().getDebugStatus())
 					e.printStackTrace();
 				FVSHelper.getInstance().logFile(e.getMessage());
 			}
@@ -348,6 +280,26 @@ public class Main {
 		System.out.println("Program finished");
 		System.out.println(new Date());
 
+	}
+
+	private void runEvaluation(List<ClassifierType> cts, String datasetName, DiscretizationType dis_alg,
+			Instances instances, Preprocessing_Algorithm p_alg, String context, double double_param,
+			ThresholdType thr_alg, Filter filter) throws Exception, IOException {
+		for (ClassifierType type : cts) {
+			if (type == ClassifierType.DecisionStump && p_alg != Preprocessing_Algorithm.Original)
+				continue;
+			FVSHelper.getInstance().logFile("Classifier: " + type);
+			double modelSize = Double.NEGATIVE_INFINITY;
+			if (modelSize == Double.NEGATIVE_INFINITY) {
+				FVSEvaluation eval = new FVSEvaluation(instances, NUMBER_OF_BINS);
+				// Cross validate dataset
+				eval.stratifiedFold(type, CROSS_VALIDATION, p_alg, filter);
+				writeReport(REPORT_FOLDER, datasetName, instances.classIndex(), eval, double_param, p_alg, type,
+						dis_alg, thr_alg);
+				if (FVSHelper.getInstance().getDebugStatus())
+					System.out.println("Writing report: " + context);
+			}
+		}
 	}
 
 	private double[] getModelSize(Classifier o_cl) {
@@ -375,123 +327,17 @@ public class Main {
 		return result;
 	}
 
-	private PreprocessingType getPreprocessType(Preprocessing_Algorithm p_alg) {
-		PreprocessingType pt;
-		switch (p_alg) {
-		case Original:
-			pt = PreprocessingType.None;
-			break;
-		case FVS_Correlation:
-		case FVS_Random:
-		case FVS_Entropy:
-			pt = PreprocessingType.FVS;
-			break;
-		case IS_Reservoir:
-		case IS_Misclassified:
-			pt = PreprocessingType.IS;
-			break;
-		case FT_RandomProjection:
-		case FT_PCA:
-		case FS_Consistency:
-		case FS_CFS:
-		case FS_CorrAttr:
-		case FS_GainRatio:
-		case FS_Kernel:
-		case FS_GreedyStepwise:
-		case FS_Relief:
-		case FS_SymmetricUncertainty:
-		case FS_Wrapper:
-			pt = PreprocessingType.FS;
-			break;
-		default:
-			pt = PreprocessingType.None;
-		}
-		return pt;
-	}
-
 	private Instances loadData(String file) throws Exception {
 		DataSource source = new DataSource(file);
-		if (IS_DEBUG) {
+		if (FVSHelper.getInstance().getDebugStatus()) {
 			FVSHelper.getInstance().logFile(file);
-			System.err.println(new Date().toString());
+			if (FVSHelper.getInstance().getDebugStatus())
+				System.err.println(new Date().toString());
 		}
 		Instances data = source.getDataSet();
 		if (data.classIndex() == -1)
 			data.setClassIndex(data.numAttributes() - 1);
 		return data;
-	}
-
-	private Classifier buildClassifier(Instances data, ClassifierType type) throws Exception {
-		Classifier c = null;
-		if (type == null)
-			type = ClassifierType.J48;
-		switch (type) {
-		case J48:
-			c = new J48();
-			((J48) c).setUnpruned(true);
-			break;
-		case J48_Pruned:
-			c = new J48();
-			((J48) c).setUnpruned(false);
-			break;
-		case JRip:
-			c = new JRip();
-			((JRip) c).setUsePruning(false);
-			break;
-		case JRip_Pruned:
-			c = new JRip();
-			((JRip) c).setUsePruning(true);
-			break;
-		case SMO:
-			c = new SMO();
-			break;
-		case DecisionStump:
-			c = new DecisionStump();
-			break;
-		default:
-			c = new J48();
-			((J48) c).setUnpruned(true);
-			break;
-		}
-		c.buildClassifier(data);
-		return c;
-	}
-
-	private double calculatePrecision(double TP, double FP) {
-		return TP / (TP + FP);
-	}
-
-	private double calculateRecall(double TP, double FN) {
-		return TP / (TP + FN);
-	}
-
-	private double calculateAccuracy(double TP, double TN, double FP, double FN) {
-		return (TP) / (TP + TN + FP + FN);
-	}
-
-	private void printEvaluation(Evaluation eval, String outputFile, int classIndex, String... params) {
-		double TP, TN, FP, FN;
-		double total = eval.numInstances();
-		TP = eval.correct();
-		TN = eval.incorrect();
-		FP = eval.numFalsePositives(classIndex);
-		FN = eval.numFalsePositives(classIndex);
-
-		// System.out.println(eval.toSummaryString());
-
-		System.out.println("Total instances: " + total);
-		System.out.println("Correct: " + TP);
-		System.out.println("Accuracy: " + calculateAccuracy(TP, TN, FP, FN));
-		System.out.println("Precision: " + calculatePrecision(TP, FP));
-		System.out.println("Recall: " + calculateRecall(TP, FN));
-		for (String s : params) {
-			System.out.println(s);
-		}
-		System.out.println();
-
-		if (outputFile != null) {
-			// Write to file
-		}
 	}
 
 	private Instances discretize(Instances data) {
@@ -527,7 +373,7 @@ public class Main {
 	private Instances featureValueSelection(Instances data, Preprocessing_Algorithm algo, ThresholdType thr_alg,
 			int numInstances, Double... params) {
 		Instances result = null;
-		Filter filter = new FVS_Filter(algo, thr_alg, numInstances, params);
+		Filter filter = getFVS(algo, thr_alg, numInstances, params);
 		try {
 			if (filter == null)
 				return data;
@@ -540,8 +386,12 @@ public class Main {
 		return result;
 	}
 
-	private Instances applySelection(Instances data, Preprocessing_Algorithm algo) {
-		Instances result = null;
+	private Filter getFVS(Preprocessing_Algorithm algo, ThresholdType thr_alg, int numInstances, Double... params) {
+		Filter filter = new FVS_Filter(algo, thr_alg, numInstances, params);
+		return filter;
+	}
+
+	private Filter getFilter(Instances data, Preprocessing_Algorithm algo) {
 		Filter filter = null;
 		switch (algo) {
 		case FS_CFS:
@@ -578,6 +428,12 @@ public class Main {
 		default:
 			break;
 		}
+		return filter;
+	}
+
+	private Instances applySelection(Instances data, Preprocessing_Algorithm algo) {
+		Instances result = null;
+		Filter filter = getFilter(data, algo);
 		try {
 			if (filter == null)
 				return data;
@@ -608,6 +464,9 @@ public class Main {
 			fileWriter.write(REPORT_HEADER);
 		}
 
+		int noise = 0;
+		if (FVSHelper.getInstance().getAddNoise())
+			noise = FVSHelper.getInstance().getNoiseLevel();
 		String threshold = double_param + "";
 		if (threshold.trim().equalsIgnoreCase("nan"))
 			threshold = params[3].toString();
@@ -616,7 +475,8 @@ public class Main {
 				|| params[2].toString() == DiscretizationType.Frequency.toString())
 			discretization = discretization + "_" + NUMBER_OF_BINS;
 		fileWriter.append(String.format(REPORT_FORMAT, uid, params[0].toString(), params[1].toString(), discretization,
-				params[3].toString(), eval.getAccuracy(), eval.getRuleSize(), double_param));
+				params[3].toString(), eval.getAccuracy(), eval.getRuleSize(), double_param, eval.getModelSize(),
+				eval.getRunTime(), eval.getMemoryUsage(), noise));
 		fileWriter.close();
 	}
 

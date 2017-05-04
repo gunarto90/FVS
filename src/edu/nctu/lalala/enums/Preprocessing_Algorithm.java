@@ -7,6 +7,10 @@ public enum Preprocessing_Algorithm {
 	 */
 	Original,
 	/**
+	 * Adding artifical noise to the data
+	 */
+	Noise,
+	/**
 	 * Randomized FVS
 	 */
 	FVS_Random,

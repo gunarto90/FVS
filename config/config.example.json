@@ -1,6 +1,6 @@
 {
     "_comments": "These are the options for each parameter in the experiments",
-    "classifier":[
+    "classifier": [
         "j48",
         "j48_pruned",
         "jrip",
@@ -8,25 +8,26 @@
         "decision_stump",
         "bayes",
         "logistic",
-        "svm"
+        "svm",
+        "instance"
     ],
-    "discretization":[
+    "discretization": [
         "none",
         "binning",
         "frequency",
         "mdl"
     ],
-    "threshold":[
+    "threshold": [
         "na",
-        "iteration", 
-        "q1", 
-        "q2", 
-        "q3", 
-        "mean", 
-        "meanplus", 
+        "iteration",
+        "q1",
+        "q2",
+        "q3",
+        "mean",
+        "meanplus",
         "meanmin"
     ],
-    "preprocessing":[
+    "preprocessing": [
         "original",
         "RandomFVS",
         "EntropyFVS",
@@ -39,7 +40,11 @@
         "misclassified"
     ],
     "folder_setup": {
-        "intermediate":"./intermediate/"
+        "intermediate": "./intermediate/"
     },
-    "skip_original": "False"
+    "noise": {
+        "enable_noise":false,
+        "noise_level":10
+    },
+    "debug": true
 }

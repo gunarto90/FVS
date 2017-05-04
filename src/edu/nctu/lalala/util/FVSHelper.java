@@ -28,6 +28,7 @@ import com.google.common.collect.Multimap;
 
 import edu.nctu.lalala.enums.ClassifierType;
 import edu.nctu.lalala.enums.DiscretizationType;
+import edu.nctu.lalala.enums.PreprocessingType;
 import edu.nctu.lalala.enums.Preprocessing_Algorithm;
 import edu.nctu.lalala.enums.ThresholdType;
 import edu.nctu.lalala.fvs.CorrelationMatrix;
@@ -45,7 +46,9 @@ public class FVSHelper {
 	private static final String CONFIG_FOLDER = "config" + "/";
 	private static final String LOG_FOLDER = "log" + "/";
 	private String INTERMEDIATE_FOLDER = "intermediate" + "/";
-	private boolean SKIP_ORIGINAL = false;
+	private boolean ADD_NOISE = false;
+	private int NOISE_LEVEL = 10; // 10 Percents
+	private boolean IS_DEBUG = true;
 
 	private FVSHelper() {
 		System.err.println(timestamp);
@@ -189,10 +192,6 @@ public class FVSHelper {
 		Instance instance = new DenseInstance(old_inst);
 		// Change with value that is available
 		for (int i = 0; i < oldValues.length - 1; i++) {
-			// System.out.println(oldValues[i]);
-			// System.out.println(list.get(i));
-			// System.out.println("############################");
-			// If list doesn't contain, then delete
 			Value v = new Value(oldValues[i]);
 			int idx = list.get(i).indexOf(v);
 			// If not found in the index
@@ -285,11 +284,12 @@ public class FVSHelper {
 			out.newLine();
 
 		} catch (IOException e) {
-			if (Main.IS_DEBUG)
+			if (IS_DEBUG)
 				System.err.println("FVSHelper.logFile exception");
 			// e.printStackTrace();
 		}
-		System.err.println(text);
+		if (IS_DEBUG)
+			System.err.println(text);
 	}
 
 	public void saveIntermediateInstances(Instances dataSet, String remark) {
@@ -304,11 +304,13 @@ public class FVSHelper {
 			saver.setFile(f);
 			saver.writeBatch();
 		} catch (IOException e) {
-			if (Main.IS_DEBUG)
+			if (IS_DEBUG)
 				System.err.println("FVSHelper.saveIntermediateInstances exception: " + e.getMessage());
 			// e.printStackTrace();
 		}
-		System.out.println("Saved intermediate instances : " + filename);
+		
+		if (IS_DEBUG)
+			System.out.println("Saved intermediate instances : " + filename);
 	}
 
 	public Instances loadIntermediateInstances(String remark) {
@@ -320,9 +322,10 @@ public class FVSHelper {
 			data = source.getDataSet();
 			if (data.classIndex() == -1)
 				data.setClassIndex(data.numAttributes() - 1);
-			System.out.println("Loaded intermediate instances : " + filename);
+			if (IS_DEBUG)
+				System.out.println("Loaded intermediate instances : " + filename);
 		} catch (Exception e) {
-			if (Main.IS_DEBUG)
+			if (IS_DEBUG)
 				System.err.println("FVSHelper.loadIntermediateInstances exception: " + e.getMessage());
 			// e.printStackTrace();
 		}
@@ -352,8 +355,7 @@ public class FVSHelper {
 				sb.append(line);
 			}
 		} catch (IOException e) {
-			if (Main.IS_DEBUG)
-				System.err.println("FVSHelper.initConfig exception");
+			System.err.println("FVSHelper.initConfig exception");
 		}
 		// System.out.println(sb.toString());
 		String[] configs = new String[] { "classifier", "discretization", "threshold", "preprocessing" };
@@ -371,22 +373,26 @@ public class FVSHelper {
 			/* Initialize folder(s) */
 			JSONObject obj = null;
 			obj = rootObject.getJSONObject("folder_setup");
-			INTERMEDIATE_FOLDER = obj.get("intermediate").toString();
-			if (!INTERMEDIATE_FOLDER.endsWith("\\") && !INTERMEDIATE_FOLDER.endsWith("/"))
-				INTERMEDIATE_FOLDER = INTERMEDIATE_FOLDER + "\\";
-			/* Initialize skip header */
-			try {
-				String skip = rootObject.getString("skip_original");
-				if (skip != null && skip.equalsIgnoreCase("true")) {
-					SKIP_ORIGINAL = true;
-				}
-			} catch (Exception ex) {
-
+			if (obj != null) {
+				INTERMEDIATE_FOLDER = obj.get("intermediate").toString();
+				if (!INTERMEDIATE_FOLDER.endsWith("\\") && !INTERMEDIATE_FOLDER.endsWith("/"))
+					INTERMEDIATE_FOLDER = INTERMEDIATE_FOLDER + "\\";
 			}
-			System.out.println("Skip original : " + SKIP_ORIGINAL);
-			// System.out.println(INTERMEDIATE_FOLDER);
-			// System.out.println(Arrays.asList(new
-			// File(INTERMEDIATE_FOLDER).list()));
+			/* Initialize add noise */
+			obj = rootObject.getJSONObject("noise");
+			if (obj != null) {
+				ADD_NOISE = obj.getBoolean("enable_noise");
+				NOISE_LEVEL = obj.getInt("noise_level");
+			}
+			/* Initialize debug status */
+			try {
+				IS_DEBUG = rootObject.getBoolean("debug");
+			} catch (Exception ex) {
+			}
+			if (IS_DEBUG) {
+				System.out.println("Debug mode is ON");
+				System.out.println(String.format("Add noise: %s (%d percents)", ADD_NOISE, NOISE_LEVEL));
+			}
 		} catch (JSONException e) {
 			// JSON Parsing error
 			e.printStackTrace();
@@ -415,6 +421,8 @@ public class FVSHelper {
 				result.add(ClassifierType.Logistic);
 			else if (s.equalsIgnoreCase("svm"))
 				result.add(ClassifierType.SMO);
+			else if (s.equalsIgnoreCase("instance"))
+				result.add(ClassifierType.Instance);
 		}
 		return result;
 	}
@@ -490,7 +498,49 @@ public class FVSHelper {
 		return result;
 	}
 
-	public boolean getSkipOriginal() {
-		return SKIP_ORIGINAL;
+	public PreprocessingType getPreprocessType(Preprocessing_Algorithm p_alg) {
+		PreprocessingType pt;
+		switch (p_alg) {
+		case Original:
+			pt = PreprocessingType.None;
+			break;
+		case FVS_Correlation:
+		case FVS_Random:
+		case FVS_Entropy:
+			pt = PreprocessingType.FVS;
+			break;
+		case IS_Reservoir:
+		case IS_Misclassified:
+			pt = PreprocessingType.IS;
+			break;
+		case FT_RandomProjection:
+		case FT_PCA:
+		case FS_Consistency:
+		case FS_CFS:
+		case FS_CorrAttr:
+		case FS_GainRatio:
+		case FS_Kernel:
+		case FS_GreedyStepwise:
+		case FS_Relief:
+		case FS_SymmetricUncertainty:
+		case FS_Wrapper:
+			pt = PreprocessingType.FS;
+			break;
+		default:
+			pt = PreprocessingType.None;
+		}
+		return pt;
+	}
+
+	public boolean getAddNoise() {
+		return ADD_NOISE;
+	}
+
+	public int getNoiseLevel() {
+		return NOISE_LEVEL;
+	}
+
+	public boolean getDebugStatus() {
+		return IS_DEBUG;
 	}
 }

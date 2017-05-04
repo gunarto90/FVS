@@ -7,43 +7,40 @@ import java.io.ObjectOutputStream;
 import java.util.Random;
 
 import edu.nctu.lalala.enums.ClassifierType;
+import edu.nctu.lalala.enums.PreprocessingType;
 import edu.nctu.lalala.enums.Preprocessing_Algorithm;
 import edu.nctu.lalala.util.FVSHelper;
-import weka.attributeSelection.CfsSubsetEval;
-import weka.attributeSelection.ConsistencySubsetEval;
 import weka.classifiers.Classifier;
 import weka.classifiers.bayes.NaiveBayes;
 import weka.classifiers.functions.Logistic;
 import weka.classifiers.functions.SMO;
+import weka.classifiers.lazy.IBk;
 import weka.classifiers.rules.JRip;
 import weka.classifiers.trees.DecisionStump;
 import weka.classifiers.trees.J48;
 import weka.core.Instances;
+import weka.core.neighboursearch.KDTree;
 import weka.filters.Filter;
-import weka.filters.supervised.attribute.AttributeSelection;
-import weka.filters.unsupervised.attribute.PrincipalComponents;
-import weka.filters.unsupervised.attribute.RandomProjection;
-import weka.filters.unsupervised.instance.RemoveMisclassified;
-import weka.filters.unsupervised.instance.ReservoirSample;
+import weka.filters.unsupervised.attribute.AddNoise;
 
 public class FVSEvaluation extends weka.classifiers.Evaluation {
-	String format;
-	String header;
 	int numOfBins;
 	Instances data;
 	double accuracy;
-	double modelSize;
-	int ruleSize;
+	long modelSize;
+	long ruleSize;
+	double runTime;
+	double memoryUsage;
 
-	public FVSEvaluation(Instances data, String format, String header, int numOfBins) throws Exception {
+	public FVSEvaluation(Instances data, int numOfBins) throws Exception {
 		super(data);
 		this.data = data;
-		this.format = format;
-		this.header = header;
 		this.numOfBins = numOfBins;
 		this.accuracy = 0.0;
-		this.modelSize = 0.0;
+		this.modelSize = 0;
 		this.ruleSize = 0;
+		this.runTime = 0;
+		this.memoryUsage = 0;
 	}
 
 	/**
@@ -51,50 +48,97 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 	 */
 	private static final long serialVersionUID = -234672101871792496L;
 
-	public void stratifiedFold(ClassifierType type, int folds) {
-		stratifiedFold(type, folds, null);
+	public void stratifiedFold(ClassifierType type, int folds, Preprocessing_Algorithm p_alg) {
+		stratifiedFold(type, folds, p_alg, null);
 	}
 
-	public void stratifiedFold(ClassifierType type, int folds, Filter filter) {
+	public void stratifiedFold(ClassifierType type, int folds, Preprocessing_Algorithm p_alg, Filter filter) {
 		int seed = 10000;
 		Random rand = new Random(seed);
 		Instances randData = new Instances(data);
 		randData.randomize(rand);
 		randData.stratify(folds);
-		System.err.println("Stratified kfold: " + folds);
+		// System.err.println("Stratified kfold: " + folds);
 
 		double[] accuracies = new double[folds];
-		double[] models = new double[folds];
-		int[] rules = new int[folds];
+		long[] models = new long[folds];
+		long[] rules = new long[folds];
+		double[] run_time = new double[folds];
+		double[] memories = new double[folds];
 
 		/* To get the base model size -- weka dump */
-		double baseModel = 0.0;
+		long baseModel = 0;
 		Classifier tempClassifier = null;
 		try {
 			tempClassifier = buildClassifier(new Instances(data, 0), type);
-			double[] tempModel = getModelSize(tempClassifier);
+			long[] tempModel = getModelSize(tempClassifier);
 			baseModel = tempModel[0];
 			tempModel = null;
+			// System.err.println("Base model size: " + baseModel);
 		} catch (Exception e1) {
 		}
 		tempClassifier = null;
 
+		/* Adding noise to training data */
+		if (FVSHelper.getInstance().getAddNoise()) {
+			if (FVSHelper.getInstance().getDebugStatus())
+				System.err.println("Adding noise to the dataset");
+			weka.filters.unsupervised.attribute.AddNoise noise = new AddNoise();
+			int percent = 10;
+			int seedNoise = 999;
+			boolean useMissing = false;
+			for (int i = 0; i < randData.numAttributes() - 1; i++) {
+				noise.addNoise(randData, seedNoise, percent, i, useMissing);
+			}
+			noise = null;
+		}
+
+		if (filter != null && FVSHelper.getInstance().getPreprocessType(p_alg) == PreprocessingType.FS) {
+			try {
+				double beforeMem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024);
+				double time = System.nanoTime();
+				filter.setInputFormat(randData);
+				randData = Filter.useFilter(randData, filter);
+				this.runTime = (System.nanoTime() - time) / 1000000;
+				double afterMem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024);
+				this.memoryUsage = (afterMem - beforeMem);
+
+			} catch (Exception e) {
+				System.err.println("Error in applying filter in all data (FS)");
+				e.printStackTrace();
+			}
+		}
+
 		for (int n = 0; n < folds; n++) {
 			Instances train = randData.trainCV(folds, n);
 			Instances test = randData.testCV(folds, n);
+			PreprocessingType pt = FVSHelper.getInstance().getPreprocessType(p_alg);
 
-			if (filter != null) {
+			if (filter != null && (pt == PreprocessingType.FVS || pt == PreprocessingType.IS)) {
+				try {
+					double beforeMem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory())
+							/ (1024 * 1024);
+					double time = System.nanoTime();
+					filter.setInputFormat(train);
+					train = Filter.useFilter(train, filter);
+					time = (System.nanoTime() - time);
+					run_time[n] = time;
+					double afterMem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory())
+							/ (1024 * 1024);
+					memories[n] = afterMem - beforeMem;
 
+				} catch (Exception e) {
+					System.err.println("Error in applying filter in training data: " + pt);
+					e.printStackTrace();
+				}
 			}
 
 			int correct = 0;
 			double accuracy = 0.0;
-			double model = 0.0;
-			int rule = 0;
 			double pred, label;
 
 			try {
-				Classifier cl = buildClassifier(data, type);
+				Classifier cl = buildClassifier(train, type);
 				for (int i = 0; i < test.numInstances(); i++) {
 					pred = cl.classifyInstance(test.instance(i));
 					label = test.instance(i).classValue();
@@ -103,9 +147,9 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 				}
 				accuracy = (double) correct / test.numInstances();
 				accuracies[n] = accuracy;
-				double[] tempModel = getModelSize(cl);
+				long[] tempModel = getModelSize(cl);
 				models[n] = tempModel[0] - baseModel;
-				rules[n] = (int) tempModel[1];
+				rules[n] = tempModel[1];
 				tempModel = null;
 
 			} catch (Exception e) {
@@ -118,44 +162,69 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 			this.accuracy += x;
 		}
 		this.accuracy /= accuracies.length;
-		for (double x : models) {
+		for (long x : models) {
 			this.modelSize += x;
 		}
 		this.modelSize /= models.length;
-		for (int x : rules) {
+		for (long x : rules) {
 			this.ruleSize += x;
 		}
 		this.ruleSize /= rules.length;
+		if (this.runTime == 0.0) {
+			for (double x : run_time) {
+				this.runTime += x;
+			}
+			this.runTime /= run_time.length;
+			this.runTime /= 1000000;
+		}
+		if (this.memoryUsage == 0.0) {
+			for (double x : memories) {
+				this.memoryUsage += x;
+			}
+			this.memoryUsage /= memories.length;
+			this.memoryUsage /= (1024);
+		}
 
 		/* Clearing the memory */
 		accuracies = null;
 		models = null;
 		rules = null;
+		run_time = null;
+		memories = null;
 
 		System.gc();
 
-		System.err.println(this.accuracy);
+		// System.err.println(this.accuracy);
 	}
 
 	public double getAccuracy() {
 		return this.accuracy;
 	}
 
-	public double getModelSize() {
+	public long getModelSize() {
 		return this.modelSize;
 	}
 
-	public int getRuleSize() {
+	public long getRuleSize() {
 		return this.ruleSize;
 	}
 
-	private double[] getModelSize(Classifier cl) {
-		double[] result = new double[2];
-		double modelSize = 0.0;
-		double rule = 0.0; // Only for J48 and Jrip
+	public double getRunTime() {
+		return this.runTime;
+	}
+
+	public double getMemoryUsage() {
+		return this.memoryUsage;
+	}
+
+	private long[] getModelSize(Classifier cl) {
+		long[] result = new long[2];
+		long modelSize, rule;
+		modelSize = 0;
+		rule = 0;
 		try {
 			J48 a = (J48) cl;
-			rule = a.measureNumRules();
+			rule = (int) a.measureNumRules();
 		} catch (Exception e) {
 		}
 		if (rule == 0.0) {
@@ -179,55 +248,8 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 		}
 		result[0] = modelSize;
 		result[1] = rule;
-		return result;
-	}
 
-	private Instances applySelection(Instances data, Preprocessing_Algorithm algo) {
-		Instances result = null;
-		Filter filter = null;
-		switch (algo) {
-		case FS_CFS:
-			filter = new AttributeSelection();
-			AttributeSelection temp = (AttributeSelection) filter;
-			CfsSubsetEval cfs = new CfsSubsetEval();
-			temp.setEvaluator(cfs);
-			break;
-		case FS_Consistency:
-			filter = new AttributeSelection();
-			temp = (AttributeSelection) filter;
-			ConsistencySubsetEval cs = new ConsistencySubsetEval();
-			temp.setEvaluator(cs);
-			break;
-		case FT_RandomProjection:
-			RandomProjection rp = new RandomProjection();
-			filter = rp;
-			break;
-		case FT_PCA:
-			PrincipalComponents pca = new PrincipalComponents();
-			pca.setMaximumAttributes(data.numAttributes());
-			filter = pca;
-			break;
-		case IS_Reservoir:
-			ReservoirSample rs = new ReservoirSample();
-			filter = rs;
-			break;
-		case IS_Misclassified:
-			RemoveMisclassified rmc = new RemoveMisclassified();
-			rmc.setClassifier(new J48());
-			rmc.setClassIndex(data.classIndex());
-			filter = rmc;
-			break;
-		default:
-			break;
-		}
-		try {
-			if (filter == null)
-				return data;
-			filter.setInputFormat(data);
-			result = Filter.useFilter(data, filter);
-		} catch (Exception e) {
-			FVSHelper.getInstance().logFile(e.getMessage());
-		}
+		// System.err.println("getModelSize: " + modelSize);
 		return result;
 	}
 
@@ -263,6 +285,11 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 			break;
 		case Logistic:
 			c = new Logistic();
+			break;
+		case Instance:
+			int k = 1;
+			c = new IBk(k);
+			((IBk) c).setNearestNeighbourSearchAlgorithm(new KDTree());
 			break;
 		default:
 			c = new J48();
