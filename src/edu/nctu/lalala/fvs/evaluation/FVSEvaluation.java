@@ -93,44 +93,22 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 			noise = null;
 		}
 
-		if (filter != null && FVSHelper.getInstance().getPreprocessType(p_alg) == PreprocessingType.FS) {
-			try {
-				double beforeMem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024);
-				double time = System.nanoTime();
-				filter.setInputFormat(randData);
-				randData = Filter.useFilter(randData, filter);
-				this.runTime = (System.nanoTime() - time) / 1000000;
-				double afterMem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024);
-				this.memoryUsage = (afterMem - beforeMem);
-
-			} catch (Exception e) {
-				System.err.println("Error in applying filter in all data (FS)");
-				e.printStackTrace();
-			}
-		}
-
 		for (int n = 0; n < folds; n++) {
 			Instances train = randData.trainCV(folds, n);
 			Instances test = randData.testCV(folds, n);
 			PreprocessingType pt = FVSHelper.getInstance().getPreprocessType(p_alg);
 
-			if (filter != null && (pt == PreprocessingType.FVS || pt == PreprocessingType.IS)) {
+			if (filter != null) {
 				try {
-					double beforeMem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory())
-							/ (1024 * 1024);
-					double time = System.nanoTime();
 					filter.setInputFormat(train);
-					train = Filter.useFilter(train, filter);
-					time = (System.nanoTime() - time);
-					run_time[n] = time;
-					double afterMem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory())
-							/ (1024 * 1024);
-					memories[n] = afterMem - beforeMem;
-
 				} catch (Exception e) {
-					System.err.println("Error in applying filter in training data: " + pt);
+					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
+				Object[] temp = applyFilter(filter, train, pt);
+				train = (Instances) temp[0];
+				run_time[n] = (double) temp[1];
+				memories[n] = (double) temp[2];
 			}
 
 			int correct = 0;
@@ -139,6 +117,13 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 
 			try {
 				Classifier cl = buildClassifier(train, type);
+				// Apply the same preprocessing to the test dataset
+				if (filter != null) {
+					Object[] temp = applyFilter(filter, test, pt);
+					test = (Instances) temp[0];
+					run_time[n] = (double) temp[1];
+					memories[n] = (double) temp[2];
+				}
 				for (int i = 0; i < test.numInstances(); i++) {
 					pred = cl.classifyInstance(test.instance(i));
 					label = test.instance(i).classValue();
@@ -243,6 +228,7 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 			oos.close();
 			modelSize = f.length();
 			f.deleteOnExit();
+			f.delete();
 		} catch (IOException e) {
 
 		}
@@ -298,6 +284,28 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 		}
 		c.buildClassifier(data);
 		return c;
+	}
+	
+	private Object[] applyFilter(Filter filter, Instances data, PreprocessingType pt)
+	{
+		Object[] results = new Object[3];
+		try {
+			double beforeMem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory())
+					/ (1024 * 1024);
+			double time = System.nanoTime();
+			data = Filter.useFilter(data, filter);
+			results[0] = data;
+			time = (System.nanoTime() - time);
+			results[1] = time;
+			double afterMem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory())
+					/ (1024 * 1024);
+			results[2] = afterMem - beforeMem;
+
+		} catch (Exception e) {
+			System.err.println("Error in applying filter in training data: " + pt);
+			e.printStackTrace();
+		}
+		return results;
 	}
 
 }

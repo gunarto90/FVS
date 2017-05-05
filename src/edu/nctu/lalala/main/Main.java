@@ -60,7 +60,7 @@ public class Main {
 	 */
 	private static final String REPORT_FORMAT = "%s\t%s\t%s\t%s\t%s\t%.3f\t%d\t%.3f\t%d\t%.3f\t%.3f\t%d\n";
 
-	private int CROSS_VALIDATION = 5;
+	private int CROSS_VALIDATION = 3;
 
 	private static int NUMBER_OF_BINS = 10;
 
