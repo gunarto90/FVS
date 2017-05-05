@@ -1,9 +1,14 @@
 package edu.nctu.lalala.fvs.evaluation;
 
+import java.io.BufferedWriter;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Random;
 
 import edu.nctu.lalala.enums.ClassifierType;
@@ -220,17 +225,20 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 			}
 		}
 		ObjectOutputStream oos;
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		try {
-			File f = File.createTempFile("weka", "model");
-			oos = new ObjectOutputStream(new FileOutputStream(f));
+			oos = new ObjectOutputStream(baos);
 			oos.writeObject(cl);
 			oos.flush();
 			oos.close();
-			modelSize = f.length();
-			f.deleteOnExit();
-			f.delete();
+			modelSize = baos.size();
+			baos.close();
+			baos = null;
+			oos = null;
 		} catch (IOException e) {
 
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 		result[0] = modelSize;
 		result[1] = rule;
@@ -285,20 +293,17 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 		c.buildClassifier(data);
 		return c;
 	}
-	
-	private Object[] applyFilter(Filter filter, Instances data, PreprocessingType pt)
-	{
+
+	private Object[] applyFilter(Filter filter, Instances data, PreprocessingType pt) {
 		Object[] results = new Object[3];
 		try {
-			double beforeMem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory())
-					/ (1024 * 1024);
+			double beforeMem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024 * 1024);
 			double time = System.nanoTime();
 			data = Filter.useFilter(data, filter);
 			results[0] = data;
 			time = (System.nanoTime() - time);
 			results[1] = time;
-			double afterMem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory())
-					/ (1024 * 1024);
+			double afterMem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024 * 1024);
 			results[2] = afterMem - beforeMem;
 
 		} catch (Exception e) {
