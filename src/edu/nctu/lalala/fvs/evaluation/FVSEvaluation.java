@@ -1,14 +1,10 @@
 package edu.nctu.lalala.fvs.evaluation;
 
-import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryUsage;
 import java.util.Random;
 
 import edu.nctu.lalala.enums.ClassifierType;
@@ -35,7 +31,9 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 	long modelSize;
 	long ruleSize;
 	double runTime;
-	double memoryUsage;
+	long memoryUsage;
+	
+	MemoryUsage heapMemoryUsage = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
 
 	public FVSEvaluation(Instances data, int numOfBins) throws Exception {
 		super(data);
@@ -75,7 +73,7 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 		long[] models = new long[folds];
 		long[] rules = new long[folds];
 		double[] run_time = new double[folds];
-		double[] memories = new double[folds];
+		long[] memories = new long[folds];
 
 		/* To get the base model size -- weka dump */
 		long baseModel = 0;
@@ -119,7 +117,7 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 				Object[] temp = applyFilter(filter, train, pt);
 				train = (Instances) temp[0];
 				run_time[n] = (double) temp[1];
-				memories[n] = (double) temp[2];
+				memories[n] = (long) temp[2];
 			}
 
 			int correct = 0;
@@ -137,7 +135,7 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 					Object[] temp = applyFilter(filter, test, pt);
 					test = (Instances) temp[0];
 					run_time[n] = (double) temp[1];
-					memories[n] = (double) temp[2];
+					memories[n] = (long) temp[2];
 				}
 				for (int i = 0; i < test.numInstances(); i++) {
 					pred = cl.classifyInstance(test.instance(i));
@@ -208,7 +206,7 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 		return this.runTime;
 	}
 
-	public double getMemoryUsage() {
+	public long getMemoryUsage() {
 		return this.memoryUsage;
 	}
 
@@ -302,14 +300,15 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 	private Object[] applyFilter(Filter filter, Instances data, PreprocessingType pt) {
 		Object[] results = new Object[3];
 		try {
-			double beforeMem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024);
+//			double beforeMem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024);
 			double time = System.nanoTime();
 			data = Filter.useFilter(data, filter);
 			results[0] = data;
 			time = (System.nanoTime() - time);
 			results[1] = time;
-			double afterMem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024);
-			results[2] = Math.abs(afterMem - beforeMem);
+//			double afterMem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024);
+//			results[2] = Math.abs(afterMem - beforeMem);
+			results[2] = heapMemoryUsage.getUsed() / (1024);
 
 		} catch (Exception e) {
 			System.err.println("Error in applying filter in training data: " + pt);

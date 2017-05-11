@@ -58,11 +58,13 @@ public class Main {
 	 * Model Size -int<br/>
 	 * Double Param - Float<br/>
 	 */
-	private static final String REPORT_FORMAT = "%s\t%s\t%s\t%s\t%s\t%.3f\t%d\t%.3f\t%d\t%.3f\t%.3f\t%d\n";
+	private static final String REPORT_FORMAT = "%s\t%s\t%s\t%s\t%s\t%.3f\t%d\t%.3f\t%d\t%.3f\t%d\t%d\n";
 
 	private int CROSS_VALIDATION = 3;
 
 	private static int NUMBER_OF_BINS = 10;
+	
+	public static int NUMBER_OF_CLASS = 6;
 
 	/**
 	 * static Singleton instance
@@ -194,6 +196,7 @@ public class Main {
 					if (data != null)
 						data.delete();
 					data = null;
+					NUMBER_OF_CLASS = discretized.numClasses();
 
 					/* For each pre-processing */
 					for (Preprocessing_Algorithm p_alg : fas) {
@@ -410,15 +413,17 @@ public class Main {
 			break;
 		case FT_RandomProjection:
 			RandomProjection rp = new RandomProjection();
+			rp.setNumberOfAttributes(data.numAttributes() / 2);
 			filter = rp;
 			break;
 		case FT_PCA:
 			PrincipalComponents pca = new PrincipalComponents();
-			pca.setMaximumAttributes(data.numAttributes());
+			pca.setMaximumAttributes(data.numAttributes() / 2);
 			filter = pca;
 			break;
 		case IS_Reservoir:
 			ReservoirSample rs = new ReservoirSample();
+			/* Sample 5% of the original instance */
 			rs.setSampleSize(data.numInstances() / 20);
 			filter = rs;
 			break;

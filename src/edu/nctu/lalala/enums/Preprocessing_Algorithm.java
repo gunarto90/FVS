@@ -22,6 +22,10 @@ public enum Preprocessing_Algorithm {
 	 * Correlation-based FVS
 	 */
 	FVS_Correlation,
+	/**
+	 * Entropy-based FVS with random selection
+	 */
+	FVS_Random_Entropy,
 	/* Instance Selection methods */
 	/**
 	 * Vitter, Jeffrey S. "Random sampling with a reservoir." ACM Transactions

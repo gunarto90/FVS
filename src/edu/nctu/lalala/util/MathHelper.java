@@ -4,6 +4,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import edu.nctu.lalala.main.Main;
+
 public class MathHelper {
 	private MathHelper() {
 	}
@@ -79,7 +81,8 @@ public class MathHelper {
 		for (int i = 0; i < p.length; i++) {
 			if (p[i] == 0.0F)
 				continue;
-			entropy -= p[i] * (Math.log(p[i]) / Math.log(p.length));
+//			entropy -= p[i] * (Math.log(p[i]) / Math.log(p.length));
+			entropy -= p[i] * (Math.log(p[i]) / Main.NUMBER_OF_CLASS);
 		}
 		return entropy;
 	}
