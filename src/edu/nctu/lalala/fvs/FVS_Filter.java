@@ -17,6 +17,7 @@ import edu.nctu.lalala.enums.Preprocessing_Algorithm;
 import edu.nctu.lalala.enums.ThresholdType;
 import edu.nctu.lalala.fvs.algorithm.CorrelationFVS;
 import edu.nctu.lalala.fvs.algorithm.EntropyFVS;
+import edu.nctu.lalala.fvs.algorithm.RandomEntropyFVS;
 import edu.nctu.lalala.fvs.algorithm.RandomFVS;
 import edu.nctu.lalala.fvs.interfaces.IFVS;
 import edu.nctu.lalala.util.MathHelper;
@@ -125,6 +126,10 @@ public class FVS_Filter extends Filter {
 			if (params.length > 0)
 				topk = params[0];
 			fvs.input(inst, output, topk);
+			break;
+		case FVS_Random_Entropy:
+			fvs = new RandomEntropyFVS();
+			fvs.input(inst, output, (Double) (0.0));
 			break;
 		default:
 			fvs = new RandomFVS();

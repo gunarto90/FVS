@@ -482,6 +482,8 @@ public class FVSHelper {
 				result.add(Preprocessing_Algorithm.FVS_Entropy);
 			else if (s.equalsIgnoreCase("CorrelationFVS"))
 				result.add(Preprocessing_Algorithm.FVS_Correlation);
+			else if (s.equalsIgnoreCase("RandomEntropyFVS"))
+				result.add(Preprocessing_Algorithm.FVS_Random_Entropy);
 			else if (s.equalsIgnoreCase("cfs"))
 				result.add(Preprocessing_Algorithm.FS_CFS);
 			else if (s.equalsIgnoreCase("consistency"))
@@ -507,6 +509,7 @@ public class FVSHelper {
 		case FVS_Correlation:
 		case FVS_Random:
 		case FVS_Entropy:
+		case FVS_Random_Entropy:
 			pt = PreprocessingType.FVS;
 			break;
 		case IS_Reservoir:

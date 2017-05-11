@@ -31,6 +31,7 @@
         "original",
         "RandomFVS",
         "EntropyFVS",
+        "RandomEntropyFVS",
         "CorrelationFVS",
         "cfs",
         "consistency",

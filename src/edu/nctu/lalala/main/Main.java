@@ -63,7 +63,7 @@ public class Main {
 	private int CROSS_VALIDATION = 3;
 
 	private static int NUMBER_OF_BINS = 10;
-	
+
 	public static int NUMBER_OF_CLASS = 6;
 
 	/**
@@ -157,7 +157,7 @@ public class Main {
 		}
 		// For each file
 		for (String datasetName : folder.list()) {
-			if(!datasetName.endsWith(".arff"))
+			if (!datasetName.endsWith(".arff"))
 				continue;
 			try {
 				// Load original data
@@ -219,6 +219,11 @@ public class Main {
 											filter);
 									filter = null;
 								}
+							} else if (p_alg == Preprocessing_Algorithm.FVS_Random_Entropy) {
+								Filter filter = getFVS(p_alg, ThresholdType.Iteration, discretized.numInstances());
+								runEvaluation(cts, datasetName, dis_alg, discretized, p_alg, ("FVS Random Entropy"),
+										0.0, ThresholdType.NA, filter);
+								filter = null;
 							} else if (p_alg == Preprocessing_Algorithm.FVS_Entropy) {
 								for (ThresholdType thr_alg : tts) {
 									if (thr_alg == ThresholdType.NA)
@@ -237,8 +242,8 @@ public class Main {
 										}
 									} else {
 										Filter filter = getFVS(p_alg, thr_alg, discretized.numInstances(), 0.0);
-										runEvaluation(cts, datasetName, dis_alg, discretized, p_alg,
-												("FVS Entropy : " + thr_alg), 0.0, thr_alg, filter);
+										runEvaluation(cts, datasetName, dis_alg, discretized, p_alg, p_alg.toString(),
+												0.0, thr_alg, filter);
 										filter = null;
 									}
 								}
@@ -264,6 +269,7 @@ public class Main {
 							Filter filter = getFilter(discretized, p_alg);
 							runEvaluation(cts, datasetName, dis_alg, discretized, p_alg, p_alg.toString(), 0.0,
 									ThresholdType.NA, filter);
+							filter = null;
 						}
 					} // For each preprocessing algorithm
 					System.out.println();
