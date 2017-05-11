@@ -218,8 +218,6 @@ public class FVS_Filter extends Filter {
 
 	protected Instances determineOutputFormat(Instances inputFormat) {
 		Instances result = new Instances(inputFormat, 0);
-		// result.insertAttributeAt(new Attribute("bla"),
-		// result.numAttributes());
 		return result;
 	}
 
@@ -274,9 +272,15 @@ public class FVS_Filter extends Filter {
 		// See mean, Q1~Q3 values for entropy threshold
 		Double[] temp = new Double[entropies.size()];
 		temp = entropies.toArray(temp);
-		Double mean = MathHelper.getInstance().calculateAverage(temp);
-		Double stdev = MathHelper.getInstance().calculateStdev(mean, temp);
-		Double[] q = MathHelper.getInstance().calculateQuartile(temp);
+		Double mean = 0.0;
+		Double stdev = 0.0;
+		Double[] q = null;
+		if (thr_alg == ThresholdType.Mean || thr_alg == ThresholdType.MeanMin || thr_alg == ThresholdType.MeanPlus)
+			mean = MathHelper.getInstance().calculateAverage(temp);
+		if (thr_alg == ThresholdType.MeanMin || thr_alg == ThresholdType.MeanPlus)
+			stdev = MathHelper.getInstance().calculateStdev(mean, temp);
+		if (thr_alg == ThresholdType.Q1 || thr_alg == ThresholdType.Q2 || thr_alg == ThresholdType.Q3)
+			q = MathHelper.getInstance().calculateQuartile(temp);
 		// System.out.println("Mean: " + mean);
 		// System.out.println("Stdev: " + stdev);
 		// System.out.println("Mean + Stdev: " + (mean + stdev));
@@ -320,15 +324,18 @@ public class FVS_Filter extends Filter {
 			List<Double> corrValues) {
 		Map<FV, Collection<FV>> result = new HashMap<FV, Collection<FV>>();
 		generateEntropy(fv_list);
-		Double mean;
-		Double stdev;
-		Double[] q = new Double[3]; // Q1, Q2, Q3
+		Double mean = 0.0;
+		Double stdev = 0.0;
+		Double[] q = null;
 		Double[] temp = new Double[corrValues.size()];
 		temp = corrValues.toArray(temp);
 		// Calculate mean, Q1~Q3
-		mean = MathHelper.getInstance().calculateAverage(temp);
-		stdev = MathHelper.getInstance().calculateStdev(mean, temp);
-		q = MathHelper.getInstance().calculateQuartile(temp);
+		if (thr_alg == ThresholdType.Mean || thr_alg == ThresholdType.MeanMin || thr_alg == ThresholdType.MeanPlus)
+			mean = MathHelper.getInstance().calculateAverage(temp);
+		if (thr_alg == ThresholdType.MeanMin || thr_alg == ThresholdType.MeanPlus)
+			stdev = MathHelper.getInstance().calculateStdev(mean, temp);
+		if (thr_alg == ThresholdType.Q1 || thr_alg == ThresholdType.Q2 || thr_alg == ThresholdType.Q3)
+			q = MathHelper.getInstance().calculateQuartile(temp);
 		// System.out.println("Mean: " + mean);
 		// System.out.println("Stdev: " + stdev);
 		// System.out.println("Mean + Stdev: " + (mean + stdev));

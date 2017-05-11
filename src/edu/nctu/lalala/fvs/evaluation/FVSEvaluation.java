@@ -58,13 +58,19 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 	}
 
 	public void stratifiedFold(ClassifierType type, int folds, Preprocessing_Algorithm p_alg, Filter filter) {
-		int seed = 10000;
+		int seed = 1;
 		Random rand = new Random(seed);
 		Instances randData = new Instances(data);
 		randData.randomize(rand);
 		randData.stratify(folds);
-		// System.err.println("Stratified kfold: " + folds);
-
+		
+//		if(FVSHelper.getInstance().getDebugStatus())
+//		{
+//			System.err.println("Data #Instances: " + data.numInstances());
+//			System.err.println("RandData #Instances: " + randData.numInstances());
+//			System.err.println("Stratified kfold: " + folds);
+//		}
+		
 		double[] accuracies = new double[folds];
 		long[] models = new long[folds];
 		long[] rules = new long[folds];
@@ -122,8 +128,12 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 
 			try {
 				Classifier cl = buildClassifier(train, type);
+				long[] tempModel = getModelSize(cl);
+				models[n] = tempModel[0] - baseModel;
+				rules[n] = tempModel[1];
+				tempModel = null;
 				// Apply the same preprocessing to the test dataset
-				if (filter != null) {
+				if (filter != null && (pt == PreprocessingType.FS)) {
 					Object[] temp = applyFilter(filter, test, pt);
 					test = (Instances) temp[0];
 					run_time[n] = (double) temp[1];
@@ -137,11 +147,6 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 				}
 				accuracy = (double) correct / test.numInstances();
 				accuracies[n] = accuracy;
-				long[] tempModel = getModelSize(cl);
-				models[n] = tempModel[0] - baseModel;
-				rules[n] = tempModel[1];
-				tempModel = null;
-
 			} catch (Exception e) {
 
 			}
@@ -297,14 +302,14 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 	private Object[] applyFilter(Filter filter, Instances data, PreprocessingType pt) {
 		Object[] results = new Object[3];
 		try {
-			double beforeMem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024 * 1024);
+			double beforeMem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024);
 			double time = System.nanoTime();
 			data = Filter.useFilter(data, filter);
 			results[0] = data;
 			time = (System.nanoTime() - time);
 			results[1] = time;
-			double afterMem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024 * 1024);
-			results[2] = afterMem - beforeMem;
+			double afterMem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024);
+			results[2] = Math.abs(afterMem - beforeMem);
 
 		} catch (Exception e) {
 			System.err.println("Error in applying filter in training data: " + pt);

@@ -106,7 +106,6 @@ public class Main {
 
 		// Init using args if possible
 		if (args.length == 0) {
-			// TODO Custom Config File
 			customConfigFile = "config_test.json";
 		} else if (args.length == 1) {
 			lookupFolder = args[0];
@@ -140,6 +139,7 @@ public class Main {
 			config = FVSHelper.getInstance().initConfig(customConfigFile);
 		FVSHelper.getInstance().logFile(config.toString());
 		FVSHelper.getInstance().logFile(Arrays.asList(folder.list()).toString());
+		FVSHelper.getInstance().logFile("Cross validation: " + CROSS_VALIDATION);
 		List<ClassifierType> cts = FVSHelper.getInstance().getClassifierType(config);
 		List<DiscretizationType> dis = FVSHelper.getInstance().getDiscretizationType(config);
 		List<ThresholdType> tts = FVSHelper.getInstance().getThresholdType(config);
@@ -160,7 +160,6 @@ public class Main {
 			try {
 				// Load original data
 				Instances data = null;
-				// System.out.println("Load data finished");
 				// For each discretization
 				for (DiscretizationType dis_alg : dis) {
 					// Create discretized set
@@ -172,7 +171,7 @@ public class Main {
 					if (FVSHelper.getInstance().isIntermediateExist(discretized_cachename))
 						discretized = FVSHelper.getInstance().loadIntermediateInstances(discretized_cachename);
 					if (discretized == null) {
-						if (data == null) {
+						if (data == null || data.numInstances() <= 0) {
 							// Only load data if necessary (no cache)
 							data = loadData(lookupFolder + datasetName);
 							/*
@@ -191,14 +190,10 @@ public class Main {
 					FVSHelper.getInstance().logFile("Discertization: " + dis_alg);
 					if (IS_LOG_INTERMEDIATE && !load_discretized)
 						FVSHelper.getInstance().saveIntermediateInstances(discretized, discretized_cachename);
-					// System.out.println("Discretization finished");
-					boolean fs_cfs = false;
-					boolean fs_consistency = false;
-					boolean ft_projection = false;
-					boolean ft_pca = false;
-					boolean is_reservoir = false;
-					boolean is_missclassified = false;
-					/* Initialize the original model size and rule */
+					FVSHelper.getInstance().logFile(String.format("File %s has been loaded completely", datasetName));
+					if (data != null)
+						data.delete();
+					data = null;
 
 					/* For each pre-processing */
 					for (Preprocessing_Algorithm p_alg : fas) {
@@ -219,6 +214,7 @@ public class Main {
 									runEvaluation(cts, datasetName, dis_alg, discretized, p_alg,
 											("FVS Random : " + double_param), double_param, ThresholdType.Iteration,
 											filter);
+									filter = null;
 								}
 							} else if (p_alg == Preprocessing_Algorithm.FVS_Entropy) {
 								for (ThresholdType thr_alg : tts) {
@@ -234,11 +230,13 @@ public class Main {
 											runEvaluation(cts, datasetName, dis_alg, discretized, p_alg,
 													("FVS Entropy Iteration : " + double_param), double_param,
 													ThresholdType.Iteration, filter);
+											filter = null;
 										}
 									} else {
 										Filter filter = getFVS(p_alg, thr_alg, discretized.numInstances(), 0.0);
 										runEvaluation(cts, datasetName, dis_alg, discretized, p_alg,
 												("FVS Entropy : " + thr_alg), 0.0, thr_alg, filter);
+										filter = null;
 									}
 								}
 							} else if (p_alg == Preprocessing_Algorithm.FVS_Correlation) {
@@ -255,6 +253,7 @@ public class Main {
 												discretized, p_alg, String.format("FVS Correlation (%s) : %.1f ",
 														thr_alg.toString(), double_param),
 												double_param, thr_alg, filter);
+										filter = null;
 									}
 								}
 							}
@@ -265,8 +264,9 @@ public class Main {
 						}
 					} // For each preprocessing algorithm
 					System.out.println();
-					if (data != null)
-						data.delete();
+					if (discretized != null)
+						discretized.delete();
+					discretized = null;
 					System.gc();
 				} // For each discretization
 			} // Try for each file
@@ -298,6 +298,7 @@ public class Main {
 						dis_alg, thr_alg);
 				if (FVSHelper.getInstance().getDebugStatus())
 					System.out.println("Writing report: " + context);
+				eval = null;
 			}
 		}
 	}
@@ -379,6 +380,7 @@ public class Main {
 				return data;
 			filter.setInputFormat(data);
 			result = Filter.useFilter(data, filter);
+			filter = null;
 		} catch (Exception e) {
 			e.printStackTrace();
 			FVSHelper.getInstance().logFile(e.getMessage());
@@ -417,6 +419,7 @@ public class Main {
 			break;
 		case IS_Reservoir:
 			ReservoirSample rs = new ReservoirSample();
+			rs.setSampleSize(data.numInstances() / 20);
 			filter = rs;
 			break;
 		case IS_Misclassified:
@@ -439,6 +442,7 @@ public class Main {
 				return data;
 			filter.setInputFormat(data);
 			result = Filter.useFilter(data, filter);
+			filter = null;
 		} catch (Exception e) {
 			e.printStackTrace();
 			FVSHelper.getInstance().logFile(e.getMessage());
@@ -478,6 +482,7 @@ public class Main {
 				params[3].toString(), eval.getAccuracy(), eval.getRuleSize(), double_param, eval.getModelSize(),
 				eval.getRunTime(), eval.getMemoryUsage(), noise));
 		fileWriter.close();
+		fileWriter = null;
 	}
 
 }

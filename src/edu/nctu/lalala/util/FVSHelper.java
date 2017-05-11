@@ -289,7 +289,7 @@ public class FVSHelper {
 			// e.printStackTrace();
 		}
 		if (IS_DEBUG)
-			System.err.println(text);
+			System.out.println(text);
 	}
 
 	public void saveIntermediateInstances(Instances dataSet, String remark) {
