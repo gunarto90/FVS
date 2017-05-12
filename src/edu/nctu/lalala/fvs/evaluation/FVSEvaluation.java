@@ -25,20 +25,19 @@ import weka.filters.Filter;
 import weka.filters.unsupervised.attribute.AddNoise;
 
 public class FVSEvaluation extends weka.classifiers.Evaluation {
-	int numOfBins;
-	Instances data;
-	double accuracy;
-	long modelSize;
-	long ruleSize;
-	double runTime;
-	long memoryUsage;
+	private Instances data;
+	private double accuracy;
+	private long modelSize;
+	private long ruleSize;
+	private double runTime;
+	private long memoryUsage;
+	private double double_param;
 	
 	MemoryUsage heapMemoryUsage = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
 
-	public FVSEvaluation(Instances data, int numOfBins) throws Exception {
+	public FVSEvaluation(Instances data) throws Exception {
 		super(data);
 		this.data = data;
-		this.numOfBins = numOfBins;
 		this.accuracy = 0.0;
 		this.modelSize = 0;
 		this.ruleSize = 0;
@@ -93,7 +92,7 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 			if (FVSHelper.getInstance().getDebugStatus())
 				System.err.println("Adding noise to the dataset");
 			weka.filters.unsupervised.attribute.AddNoise noise = new AddNoise();
-			int percent = 10;
+			int percent = FVSHelper.getInstance().getNoiseLevel();
 			int seedNoise = 999;
 			boolean useMissing = false;
 			for (int i = 0; i < randData.numAttributes() - 1; i++) {
@@ -103,7 +102,7 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 		}
 
 		for (int n = 0; n < folds; n++) {
-			Instances train = randData.trainCV(folds, n);
+			Instances train = randData.trainCV(folds, n, rand);
 			Instances test = randData.testCV(folds, n);
 			PreprocessingType pt = FVSHelper.getInstance().getPreprocessType(p_alg);
 
@@ -315,6 +314,14 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 			e.printStackTrace();
 		}
 		return results;
+	}
+
+	public double getDouble_param() {
+		return double_param;
+	}
+
+	public void setDouble_param(double double_param) {
+		this.double_param = double_param;
 	}
 
 }

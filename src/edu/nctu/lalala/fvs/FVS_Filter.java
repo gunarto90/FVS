@@ -41,6 +41,7 @@ public class FVS_Filter extends Filter {
 	Double[] params;
 	private int numInstances;
 	ThresholdType thr_alg = ThresholdType.Iteration;
+	private IFVS fvs = null;
 	// Map<FV, Integer> fv_list = new HashMap<>();
 
 	public FVS_Filter(int numInstances, Double... params) {
@@ -98,47 +99,46 @@ public class FVS_Filter extends Filter {
 		// Initialization
 		Instances inst = getInputFormat();
 		Instances output = getOutputFormat();
-		IFVS fvs = null;
 
 		// Apply removal based on Algorithm
 		switch (this.algo) {
 		case Original:
-			fvs = new RandomFVS();
-			fvs.input(inst, output, (Double) (0.0));
+			setFvs(new RandomFVS());
+			getFvs().input(inst, output, (Double) (0.0));
 			break;
 		case FVS_Random:
-			fvs = new RandomFVS();
+			setFvs(new RandomFVS());
 			double percent_filter = 80.0;
 			if (params.length > 0)
 				percent_filter = params[0];
-			fvs.input(inst, output, percent_filter);
+			getFvs().input(inst, output, percent_filter);
 			break;
 		case FVS_Entropy:
-			fvs = new EntropyFVS(thr_alg);
+			setFvs(new EntropyFVS(thr_alg));
 			Double threshold = 0.5;
 			if (params.length > 0)
 				threshold = params[0];
-			fvs.input(inst, output, threshold);
+			getFvs().input(inst, output, threshold);
 			break;
 		case FVS_Correlation:
-			fvs = new CorrelationFVS(thr_alg);
+			setFvs(new CorrelationFVS(thr_alg));
 			Double topk = 0.1;
 			if (params.length > 0)
 				topk = params[0];
-			fvs.input(inst, output, topk);
+			getFvs().input(inst, output, topk);
 			break;
 		case FVS_Random_Entropy:
-			fvs = new RandomEntropyFVS();
-			fvs.input(inst, output, (Double) (0.0));
+			setFvs(new RandomEntropyFVS());
+			getFvs().input(inst, output, (Double) (0.0));
 			break;
 		default:
-			fvs = new RandomFVS();
-			fvs.input(inst, output, (Double) (0.0));
+			setFvs(new RandomFVS());
+			getFvs().input(inst, output, (Double) (0.0));
 			break;
 		}
 
-		fvs.applyFVS();
-		output = fvs.output();
+		getFvs().applyFVS();
+		output = getFvs().output();
 
 		for (int i = 0; i < output.numInstances(); i++) {
 			// System.out.println(output.instance(i));
@@ -486,11 +486,19 @@ public class FVS_Filter extends Filter {
 		return entropy;
 	}
 
-	int getNumInstances() {
+	public int getNumInstances() {
 		return numInstances;
 	}
 
-	void setNumInstances(int numInstances) {
+	public void setNumInstances(int numInstances) {
 		this.numInstances = numInstances;
+	}
+
+	public IFVS getFvs() {
+		return fvs;
+	}
+
+	public void setFvs(IFVS fvs) {
+		this.fvs = fvs;
 	}
 }

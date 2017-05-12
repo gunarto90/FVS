@@ -17,7 +17,7 @@ public class EntropyFVS implements IFVS {
 	Map<FV, Collection<FV>> fv_list;
 	Map<FV, Collection<FV>> filtered_fv;
 	ThresholdType thr_alg;
-	double threshold;
+	private double threshold;
 	
 	public EntropyFVS(ThresholdType thr_alg) {
 		this.thr_alg = thr_alg;
@@ -29,7 +29,7 @@ public class EntropyFVS implements IFVS {
 		this.inst = inst;
 		this.output = output;
 		this.fv_list = FVSHelper.getInstance().extractValuesFromData(inst);
-		this.threshold = (Double) params[0];
+		this.setThreshold((Double) params[0]);
 		preprocessing(inst);
 	}
 
@@ -39,14 +39,14 @@ public class EntropyFVS implements IFVS {
 		// See mean, Q1~Q3 values for entropy threshold
 		Double[] temp = new Double[entropies.size()];
 		temp = entropies.toArray(temp);
-		this.threshold = FVSHelper.getInstance().thresholdSelection(threshold, temp, this.thr_alg);
+		this.setThreshold(FVSHelper.getInstance().thresholdSelection(getThreshold(), temp, this.thr_alg));
 	}
 
 	@Override
 	public void applyFVS() {
 		// Apply removal
 		for (FV k : fv_list.keySet()) {
-			if (k.getEntropy() > threshold)
+			if (k.getEntropy() > getThreshold())
 				filtered_fv.remove(k);
 		}
 	}
@@ -55,5 +55,13 @@ public class EntropyFVS implements IFVS {
 	public Instances output() {
 		Instances output = FVSHelper.getInstance().transformInstances(inst, this.output, filtered_fv);
 		return output;
+	}
+
+	public double getThreshold() {
+		return threshold;
+	}
+
+	public void setThreshold(double threshold) {
+		this.threshold = threshold;
 	}
 }

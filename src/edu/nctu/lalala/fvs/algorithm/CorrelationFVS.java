@@ -22,7 +22,7 @@ public class CorrelationFVS implements IFVS {
 	Map<FV, Collection<FV>> filtered_fv;
 	ThresholdType thr_alg;
 	double topk;
-	double corrThreshold;
+	private double corrThreshold;
 	Double[][] CM;
 	List<Double> corrValues;
 
@@ -30,6 +30,7 @@ public class CorrelationFVS implements IFVS {
 		this.thr_alg = thr_alg;
 		this.filtered_fv = new HashMap<FV, Collection<FV>>();
 	}
+	
 	@Override
 	public void input(Instances inst, Instances output, Object... params) {
 		this.inst = inst;
@@ -44,7 +45,7 @@ public class CorrelationFVS implements IFVS {
 		this.corrValues = cm.getCorrValues();
 		Double[] temp = new Double[corrValues.size()];
 		temp = corrValues.toArray(temp);
-		this.corrThreshold = FVSHelper.getInstance().thresholdSelection(0, temp, this.thr_alg);
+		this.setCorrThreshold(FVSHelper.getInstance().thresholdSelection(0, temp, this.thr_alg));
 		FVSHelper.getInstance().generateEntropy(fv_list, inst.numInstances());
 	}
 
@@ -63,7 +64,7 @@ public class CorrelationFVS implements IFVS {
 				 * For each correlated feature, put all FV into list and do
 				 * selection based on top-k percent
 				 */
-				if (CM[i][j] >= corrThreshold) {
+				if (CM[i][j] >= getCorrThreshold()) {
 					// Mark selectedColumns
 					selectedColumns[i] = 1;
 					selectedColumns[j] = 0;
@@ -123,10 +124,19 @@ public class CorrelationFVS implements IFVS {
 
 	private void selectSubsetTopKPercent(double topk, List<List<FV>> correlatedFV, List<FV> list) {
 		Collections.sort(list);
-		int limit = (int) Math.min((int) (list.size() * topk) + 1, list.size() - 1); // Prevent
-																						// out-of-size
-		limit = (int) Math.max(limit, 0); // Prevent negative
+		/* Prevent out-of-size */
+		int limit = (int) Math.min((int) (list.size() * topk) + 1, list.size() - 1);
+		/* Prevent negative */
+		limit = (int) Math.max(limit, 0);
 		list = list.subList(0, limit);
 		correlatedFV.add(list);
+	}
+
+	public double getCorrThreshold() {
+		return corrThreshold;
+	}
+
+	public void setCorrThreshold(double corrThreshold) {
+		this.corrThreshold = corrThreshold;
 	}
 }

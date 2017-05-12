@@ -15,6 +15,7 @@ import edu.nctu.lalala.enums.PreprocessingType;
 import edu.nctu.lalala.enums.Preprocessing_Algorithm;
 import edu.nctu.lalala.enums.ThresholdType;
 import edu.nctu.lalala.fvs.FVS_Filter;
+import edu.nctu.lalala.fvs.algorithm.EntropyFVS;
 import edu.nctu.lalala.fvs.evaluation.FVSEvaluation;
 import edu.nctu.lalala.util.FVSHelper;
 import weka.attributeSelection.CfsSubsetEval;
@@ -300,10 +301,15 @@ public class Main {
 			FVSHelper.getInstance().logFile("Classifier: " + type);
 			double modelSize = Double.NEGATIVE_INFINITY;
 			if (modelSize == Double.NEGATIVE_INFINITY) {
-				FVSEvaluation eval = new FVSEvaluation(instances, NUMBER_OF_BINS);
+				FVSEvaluation eval = new FVSEvaluation(instances);
 				// Cross validate dataset
 				eval.stratifiedFold(type, CROSS_VALIDATION, p_alg, filter);
-				writeReport(REPORT_FOLDER, datasetName, instances.classIndex(), eval, double_param, p_alg, type,
+				if (p_alg == Preprocessing_Algorithm.FVS_Entropy)
+					eval.setDouble_param(((EntropyFVS) ((FVS_Filter) filter).getFvs()).getThreshold());
+				else
+					eval.setDouble_param(double_param);
+
+				writeReport(REPORT_FOLDER, datasetName, instances.classIndex(), eval, eval.getDouble_param(), p_alg, type,
 						dis_alg, thr_alg);
 				if (FVSHelper.getInstance().getDebugStatus())
 					System.out.println("Writing report: " + context);
@@ -397,8 +403,8 @@ public class Main {
 		return result;
 	}
 
-	private Filter getFVS(Preprocessing_Algorithm algo, ThresholdType thr_alg, int numInstances, Double... params) {
-		Filter filter = new FVS_Filter(algo, thr_alg, numInstances, params);
+	private FVS_Filter getFVS(Preprocessing_Algorithm algo, ThresholdType thr_alg, int numInstances, Double... params) {
+		FVS_Filter filter = new FVS_Filter(algo, thr_alg, numInstances, params);
 		return filter;
 	}
 
