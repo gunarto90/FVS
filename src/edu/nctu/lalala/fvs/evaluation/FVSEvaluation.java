@@ -133,8 +133,8 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 				if (filter != null && (pt == PreprocessingType.FS)) {
 					Object[] temp = applyFilter(filter, test, pt);
 					test = (Instances) temp[0];
-					run_time[n] = (double) temp[1];
-					memories[n] = (long) temp[2];
+					run_time[n] += (double) temp[1];
+					memories[n] += (long) temp[2];
 				}
 				for (int i = 0; i < test.numInstances(); i++) {
 					pred = cl.classifyInstance(test.instance(i));
