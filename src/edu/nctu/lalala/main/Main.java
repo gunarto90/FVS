@@ -208,23 +208,20 @@ public class Main {
 							runEvaluation(cts, datasetName, dis_alg, discretized, p_alg, "Original", -999,
 									ThresholdType.NA, null);
 						} else if (pt == PreprocessingType.FVS) {
-							if (p_alg == Preprocessing_Algorithm.FVS_Random) {
+							if (p_alg == Preprocessing_Algorithm.FVS_Random || p_alg == Preprocessing_Algorithm.FVS_Random_Entropy) {
 								for (int i = 0; i < DOUBLE_PARAMS.length; i++) {
 									Double double_param = DOUBLE_PARAMS[i];
-									if ((double_param == 1 || double_param == 0))
+									if (double_param == 1 && p_alg == Preprocessing_Algorithm.FVS_Random)
+										continue;
+									else if (double_param == 0)
 										continue;
 									Filter filter = getFVS(p_alg, ThresholdType.Iteration, discretized.numInstances(),
 											double_param);
 									runEvaluation(cts, datasetName, dis_alg, discretized, p_alg,
-											("FVS Random : " + double_param), double_param, ThresholdType.Iteration,
+											(p_alg + " : " + double_param), double_param, ThresholdType.Iteration,
 											filter);
 									filter = null;
 								}
-							} else if (p_alg == Preprocessing_Algorithm.FVS_Random_Entropy) {
-								Filter filter = getFVS(p_alg, ThresholdType.Iteration, discretized.numInstances());
-								runEvaluation(cts, datasetName, dis_alg, discretized, p_alg, ("FVS Random Entropy"),
-										0.0, ThresholdType.NA, filter);
-								filter = null;
 							} else if (p_alg == Preprocessing_Algorithm.FVS_Entropy) {
 								for (ThresholdType thr_alg : tts) {
 									if (thr_alg == ThresholdType.NA)
@@ -309,8 +306,8 @@ public class Main {
 				else
 					eval.setDouble_param(double_param);
 
-				writeReport(REPORT_FOLDER, datasetName, instances.classIndex(), eval, eval.getDouble_param(), p_alg, type,
-						dis_alg, thr_alg);
+				writeReport(REPORT_FOLDER, datasetName, instances.classIndex(), eval, eval.getDouble_param(), p_alg,
+						type, dis_alg, thr_alg);
 				if (FVSHelper.getInstance().getDebugStatus())
 					System.out.println("Writing report: " + context);
 				eval = null;

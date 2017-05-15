@@ -129,7 +129,10 @@ public class FVS_Filter extends Filter {
 			break;
 		case FVS_Random_Entropy:
 			setFvs(new RandomEntropyFVS());
-			getFvs().input(inst, output, (Double) (0.0));
+			Double epsilon = 1.0;
+			if (params.length > 0)
+				epsilon = params[0];
+			getFvs().input(inst, output, epsilon);
 			break;
 		default:
 			setFvs(new RandomFVS());

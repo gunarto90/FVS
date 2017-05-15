@@ -16,6 +16,12 @@ public class RandomEntropyFVS implements IFVS {
 	Instances output;
 	Map<FV, Collection<FV>> fv_list;
 	Map<FV, Collection<FV>> filtered_fv;
+	/**
+	 * epsilon is the parameter for removal rate <br/>
+	 * 0.0 < epsilon <= 1.0 <br/>
+	 * smaller epsilon means higher FV removal probability
+	 */
+	double epsilon = 1.0;
 
 	public RandomEntropyFVS() {
 		this.filtered_fv = new HashMap<FV, Collection<FV>>();
@@ -26,6 +32,8 @@ public class RandomEntropyFVS implements IFVS {
 		this.inst = inst;
 		this.output = output;
 		this.fv_list = FVSHelper.getInstance().extractValuesFromData(inst);
+		if (params.length > 0)
+			this.epsilon = (Double) params[0];
 		preprocessing(inst);
 	}
 
@@ -42,7 +50,7 @@ public class RandomEntropyFVS implements IFVS {
 		Random random = new Random();
 		// Apply removal
 		for (FV k : fv_list.keySet()) {
-			if (k.getEntropy() > random.nextFloat())
+			if (k.getEntropy() > (random.nextFloat() * epsilon))
 				filtered_fv.remove(k);
 		}
 	}
