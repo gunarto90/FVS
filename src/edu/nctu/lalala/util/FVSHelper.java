@@ -97,8 +97,11 @@ public class FVSHelper {
 		for (int i = 0; i < inst.numAttributes() - 1; i++) {
 			for (int j = i + 1; j < inst.numAttributes() - 1; j++) {
 				CM[i][j] = calculateLinearCorrelation(inst, average, i, j);
-				CM[j][i] = CM[i][j]; // Correlation between x and y is the
-										// same with y and x
+				/* Normalize the value if correlation is a negative value */
+				CM[i][j] = Math.abs(CM[i][j]);
+				/* Symmetric property */
+				/* Correlation between x and y is the same with y and x*/
+				CM[j][i] = CM[i][j];
 				if (CM[i][j] != 0)
 					result.getCorrValues().add(CM[i][j]);
 			}

@@ -42,7 +42,7 @@ import weka.filters.unsupervised.instance.ReservoirSample;
 // Updated March 3rd, 2016
 public class Main {
 	private static final boolean IS_LOG_INTERMEDIATE = true;
-	private static final double[] DOUBLE_PARAMS = { 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1 };
+	private static final double[] DOUBLE_PARAMS = { 1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1 };
 
 	private static final String DEFAULT_DATASET_FOLDER = "dataset";
 	private static final String NOMINAL_FOLDER = DEFAULT_DATASET_FOLDER + "/nominal/";
