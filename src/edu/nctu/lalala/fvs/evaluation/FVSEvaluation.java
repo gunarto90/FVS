@@ -232,8 +232,9 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 			oos = new ObjectOutputStream(baos);
 			oos.writeObject(cl);
 			oos.flush();
-			oos.close();
+			baos.flush();
 			modelSize = baos.size();
+			oos.close();
 			baos.close();
 			baos = null;
 			oos = null;

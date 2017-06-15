@@ -155,7 +155,7 @@ public class FVS_Filter extends Filter {
 		return (numPendingOutput() != 0);
 	}
 
-	private List<Double> getListEntropy(final Map<FV, Collection<FV>> map) {
+	public List<Double> getListEntropy(final Map<FV, Collection<FV>> map) {
 		List<Double> result = new ArrayList<Double>();
 		for (FV fv : map.keySet()) {
 			result.add(fv.getEntropy());
@@ -163,7 +163,7 @@ public class FVS_Filter extends Filter {
 		return result;
 	}
 
-	private double calculateAverageEntropy(final Map<FV, Collection<FV>> map) {
+	public double calculateAverageEntropy(final Map<FV, Collection<FV>> map) {
 		double result = 0.0;
 		int count = 0;
 		for (FV fv : map.keySet()) {
@@ -175,13 +175,13 @@ public class FVS_Filter extends Filter {
 		return result / count;
 	}
 
-	private void printFVs(Multimap<FV, FV> reduced_fv_list, Map<FV, Collection<FV>> map) {
+	public void printFVs(Multimap<FV, FV> reduced_fv_list, Map<FV, Collection<FV>> map) {
 		for (FV key : map.keySet()) {
 			System.out.println(key + "--" + "\t" + reduced_fv_list.get(key).size());
 		}
 	}
 
-	private Instances applyFVS(Instances inst, Map<FV, Collection<FV>> map, Double[] substitution) {
+	public Instances applyFVS(Instances inst, Map<FV, Collection<FV>> map, Double[] substitution) {
 		Instances output = getOutputFormat();
 		Set<FV> set = map.keySet();
 		// Prepare the list

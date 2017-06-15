@@ -29,6 +29,7 @@ public class FV implements Comparable<FV> {
 	private double label;
 	private double frequency;
 	private double entropy;
+	private double phi;
 	private int numOfClassLabels;
 
 	public FV(int feature, Object value, double label) {
@@ -72,6 +73,15 @@ public class FV implements Comparable<FV> {
 		//String output = String.format("FV{%-3d : %15s (%2.0f) [E:%.3f] [F:%.3f]} ", this.feature, this.value, this.label, getEntropy(), getFrequency());
 		String output = String.format("[%d:%s]", this.feature, this.value);
 		return output;
+	}
+	
+	@Override
+	public int compareTo(FV arg0) {
+		if(this.getEntropy() < arg0.getEntropy())
+			return -1;
+		else if(this.getEntropy() > arg0.getEntropy())
+			return 1;
+		else return 0;
 	}
 
 	public int getFeature() {
@@ -122,12 +132,11 @@ public class FV implements Comparable<FV> {
 		this.numOfClassLabels = numOfClassLabels;
 	}
 
-	@Override
-	public int compareTo(FV arg0) {
-		if(this.getEntropy() < arg0.getEntropy())
-			return -1;
-		else if(this.getEntropy() > arg0.getEntropy())
-			return 1;
-		else return 0;
+	public double getPhi() {
+		return phi;
+	}
+
+	public void setPhi(double phi) {
+		this.phi = phi;
 	}
 }

@@ -34,7 +34,6 @@ import edu.nctu.lalala.enums.ThresholdType;
 import edu.nctu.lalala.fvs.CorrelationMatrix;
 import edu.nctu.lalala.fvs.FV;
 import edu.nctu.lalala.fvs.Value;
-import edu.nctu.lalala.main.Main;
 import weka.core.DenseInstance;
 import weka.core.Instance;
 import weka.core.Instances;

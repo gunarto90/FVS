@@ -5,7 +5,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -21,17 +20,13 @@ import edu.nctu.lalala.util.FVSHelper;
 import weka.attributeSelection.CfsSubsetEval;
 import weka.attributeSelection.ConsistencySubsetEval;
 import weka.classifiers.Classifier;
-import weka.classifiers.Evaluation;
-import weka.classifiers.functions.SMO;
 import weka.classifiers.rules.JRip;
-import weka.classifiers.trees.DecisionStump;
 import weka.classifiers.trees.J48;
-import weka.core.Debug.Random;
 import weka.core.Instances;
 import weka.core.converters.ConverterUtils.DataSource;
 import weka.filters.Filter;
 import weka.filters.supervised.attribute.AttributeSelection;
-import weka.filters.unsupervised.attribute.AddNoise;
+import weka.filters.supervised.attribute.NominalToBinary;
 import weka.filters.unsupervised.attribute.MathExpression;
 import weka.filters.unsupervised.attribute.PrincipalComponents;
 import weka.filters.unsupervised.attribute.RandomProjection;
@@ -42,7 +37,8 @@ import weka.filters.unsupervised.instance.ReservoirSample;
 // Updated March 3rd, 2016
 public class Main {
 	private static final boolean IS_LOG_INTERMEDIATE = true;
-	private static final double[] DOUBLE_PARAMS = { 1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1 };
+//	private static final double[] DOUBLE_PARAMS = { 1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1 };
+	private static final double[] DOUBLE_PARAMS = { 1.0 };
 
 	private static final String DEFAULT_DATASET_FOLDER = "dataset";
 	private static final String NOMINAL_FOLDER = DEFAULT_DATASET_FOLDER + "/nominal/";
@@ -52,12 +48,12 @@ public class Main {
 	private static final String REPORT_HEADER = "User\tMethod\tClassifier\tDiscretization\tThreshold\tAccuracy\t#Rules\tDouble param\tFile Size\tRunning Time(ms)\tMemory Usage(KB)\tNoise\n";
 	/**
 	 * Method - String<br/>
-	 * Classification Algorithm - String<br/>
-	 * Discretization - String<br/>
-	 * Threshold - String<br/>
-	 * Accuracy -Float<br/>
-	 * Model Size -int<br/>
-	 * Double Param - Float<br/>
+	 * Classification Algorithm - String <br/>
+	 * Discretization - String <br/>
+	 * Threshold - String <br/>
+	 * Accuracy - Float <br/>
+	 * Model Size - Integer <br/>
+	 * Double Param - Float <br/>
 	 */
 	private static final String REPORT_FORMAT = "%s\t%s\t%s\t%s\t%s\t%.3f\t%d\t%.3f\t%d\t%.3f\t%d\t%d\n";
 
@@ -171,8 +167,10 @@ public class Main {
 					String noise_name = "";
 					String discretized_cachename = String.format("%s_%s", datasetName.replace(".arff", ""),
 							dis_alg.toString());
-					if (FVSHelper.getInstance().isIntermediateExist(discretized_cachename))
-						discretized = FVSHelper.getInstance().loadIntermediateInstances(discretized_cachename);
+					if (dis_alg != DiscretizationType.None) {
+						if (FVSHelper.getInstance().isIntermediateExist(discretized_cachename))
+							discretized = FVSHelper.getInstance().loadIntermediateInstances(discretized_cachename);
+					}
 					if (discretized == null) {
 						if (data == null || data.numInstances() <= 0) {
 							// Only load data if necessary (no cache)
@@ -187,16 +185,23 @@ public class Main {
 								data = Filter.useFilter(data, mathexpr);
 							}
 						}
-						discretized = discretize(data, dis_alg);
+						if (dis_alg != DiscretizationType.None)
+							discretized = discretize(data, dis_alg);
+						else
+							discretized = data;
 					} else
 						load_discretized = true;
 					FVSHelper.getInstance().logFile("Discertization: " + dis_alg);
 					if (IS_LOG_INTERMEDIATE && !load_discretized)
 						FVSHelper.getInstance().saveIntermediateInstances(discretized, discretized_cachename);
 					FVSHelper.getInstance().logFile(String.format("File %s has been loaded completely", datasetName));
-					if (data != null)
-						data.delete();
-					data = null;
+
+					/* Nominal to Binary */
+					// System.out.println(discretized.numAttributes());
+					// discretized = binarize(discretized);
+					// System.out.println(discretized.numAttributes());
+
+					/* Set the number of class */
 					NUMBER_OF_CLASS = discretized.numClasses();
 
 					/* For each pre-processing */
@@ -208,7 +213,8 @@ public class Main {
 							runEvaluation(cts, datasetName, dis_alg, discretized, p_alg, "Original", -999,
 									ThresholdType.NA, null);
 						} else if (pt == PreprocessingType.FVS) {
-							if (p_alg == Preprocessing_Algorithm.FVS_Random || p_alg == Preprocessing_Algorithm.FVS_Random_Entropy) {
+							if (p_alg == Preprocessing_Algorithm.FVS_Random
+									|| p_alg == Preprocessing_Algorithm.FVS_Random_Entropy) {
 								for (int i = 0; i < DOUBLE_PARAMS.length; i++) {
 									Double double_param = DOUBLE_PARAMS[i];
 									if (double_param == 1 && p_alg == Preprocessing_Algorithm.FVS_Random)
@@ -271,6 +277,10 @@ public class Main {
 						}
 					} // For each preprocessing algorithm
 					System.out.println();
+					/* Clear the memory */
+					if (data != null)
+						data.delete();
+					data = null;
 					if (discretized != null)
 						discretized.delete();
 					discretized = null;
@@ -355,6 +365,26 @@ public class Main {
 
 	private Instances discretize(Instances data) {
 		return discretize(data, DiscretizationType.Binning);
+	}
+
+	private Instances binarize(Instances data) {
+		System.out.println("Transforming data into binary");
+		Instances result = null;
+		NominalToBinary filter = new NominalToBinary();
+		filter.setTransformAllValues(true);
+		try {
+			if (filter == null)
+				return null;
+			if (data == null || data.size() < 1)
+				return null;
+			filter.setInputFormat(data);
+			result = Filter.useFilter(data, filter);
+		} catch (Exception e) {
+			e.printStackTrace();
+			FVSHelper.getInstance().logFile(e.getMessage());
+		}
+		System.out.println("Finished binary transformation");
+		return result;
 	}
 
 	private Instances discretize(Instances data, DiscretizationType type) {
