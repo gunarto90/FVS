@@ -30,6 +30,7 @@ public class FV implements Comparable<FV> {
 	private double frequency;
 	private double entropy;
 	private double phi;
+	private double ig;
 	private int numOfClassLabels;
 
 	public FV(int feature, Object value, double label) {
@@ -138,5 +139,13 @@ public class FV implements Comparable<FV> {
 
 	public void setPhi(double phi) {
 		this.phi = phi;
+	}
+
+	public double getIg() {
+		return ig;
+	}
+
+	public void setIg(double ig) {
+		this.ig = ig;
 	}
 }

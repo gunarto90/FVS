@@ -46,7 +46,7 @@ public class CorrelationFVS implements IFVS {
 		Double[] temp = new Double[corrValues.size()];
 		temp = corrValues.toArray(temp);
 		this.setCorrThreshold(FVSHelper.getInstance().thresholdSelection(0, temp, this.thr_alg));
-		FVSHelper.getInstance().generateEntropy(fv_list, inst.numInstances());
+		FVSHelper.getInstance().generateEntropy(fv_list, inst.numInstances(), inst.numClasses());
 	}
 
 	@Override

@@ -34,7 +34,7 @@ public class EntropyFVS implements IFVS {
 	}
 
 	private void preprocessing(Instances inst) {
-		List<Double> entropies = FVSHelper.getInstance().generateEntropy(fv_list, inst.numInstances());
+		List<Double> entropies = FVSHelper.getInstance().generateEntropy(fv_list, inst.numInstances(), inst.numClasses());
 		filtered_fv.putAll(fv_list);
 		// See mean, Q1~Q3 values for entropy threshold
 		Double[] temp = new Double[entropies.size()];

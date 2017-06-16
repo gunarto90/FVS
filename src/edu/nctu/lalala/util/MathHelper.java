@@ -12,7 +12,6 @@ import java.util.stream.IntStream;
 import org.apache.commons.math3.stat.inference.ChiSquareTest;
 
 import edu.nctu.lalala.fvs.FV;
-import edu.nctu.lalala.main.Main;
 
 public class MathHelper {
 	private MathHelper() {
@@ -77,24 +76,24 @@ public class MathHelper {
 		return q;
 	}
 
-	public double calculateEntropy(double[] counter, double frequency) {
+	public double calculateEntropy(int[] counter, long frequency, int numOfClass) {
 		if (frequency == 0)
 			return 0;
 		double entropy = 0;
 		double[] p = new double[counter.length];
 		for (int i = 0; i < counter.length; i++) {
-			p[i] = counter[i] / frequency;
+			p[i] = (double) counter[i] / frequency;
 		}
 		for (int i = 0; i < p.length; i++) {
 			if (p[i] == 0.0F)
 				continue;
 			// entropy -= p[i] * (Math.log(p[i]) / Math.log(p.length));
-			entropy -= p[i] * (Math.log(p[i]) / Main.NUMBER_OF_CLASS);
+			entropy -= p[i] * (Math.log(p[i]) / numOfClass);
 		}
 		return entropy;
 	}
 
-	public Map<FV, Double> calculateChiSquare(Map<FV, Collection<FV>> fv_list, int numOfClasses) {
+	public Map<FV, Double> calculateChi(Map<FV, Collection<FV>> fv_list, int numOfClasses) {
 		double verysmallnumber = 0.0000000001;
 		Map<FV, Double> result = new HashMap<FV, Double>();
 
@@ -136,6 +135,33 @@ public class MathHelper {
 		for (Entry<FV, Collection<FV>> entry : fv_list.entrySet()) {
 			FV fv = entry.getKey();
 			result.put(fv, chi.chiSquare(expect_set.get(fv), dist_set.get(fv)));
+		}
+
+		return result;
+	}
+
+	public Map<FV, Double> calculateIG(Map<FV, Collection<FV>> fv_list, int[] act_dist, double act_ent,
+			int numOfClasses) {
+		Map<FV, Double> result = new HashMap<FV, Double>();
+		double[] act_dist_prob = new double[act_dist.length];
+		int sum = IntStream.of(act_dist).sum();
+		for (int i = 0; i < act_dist.length; i++) {
+			act_dist_prob[i] = (double) act_dist[i] / sum;
+		}
+		for (Entry<FV, Collection<FV>> entry : fv_list.entrySet()) {
+			double px = entry.getKey().getFrequency();
+			double hy_x = 0.0;
+			double ig = 0.0;
+			for (double py : act_dist_prob) {
+				double pxy = px * py;
+				if (pxy > 0)
+					hy_x -= pxy * Math.log(px / pxy);
+			}
+			if (hy_x == 0)
+				ig = 0;
+			else
+				ig = act_ent - hy_x;
+			result.put(entry.getKey(), ig);
 		}
 
 		return result;

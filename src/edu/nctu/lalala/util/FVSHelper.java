@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Map.Entry;
 import java.util.Set;
 
@@ -99,7 +100,7 @@ public class FVSHelper {
 				/* Normalize the value if correlation is a negative value */
 				CM[i][j] = Math.abs(CM[i][j]);
 				/* Symmetric property */
-				/* Correlation between x and y is the same with y and x*/
+				/* Correlation between x and y is the same with y and x */
 				CM[j][i] = CM[i][j];
 				if (CM[i][j] != 0)
 					result.getCorrValues().add(CM[i][j]);
@@ -183,7 +184,8 @@ public class FVSHelper {
 		}
 		for (int i = 0; i < inst.numInstances(); i++) {
 			Instance instance = getFVSFilteredInstance(output, inst.instance(i), list, substitution);
-			output.add(instance);
+			if (instance != null)
+				output.add(instance);
 		}
 		return output;
 	}
@@ -192,6 +194,8 @@ public class FVSHelper {
 			Double[] substitution) {
 		double[] oldValues = old_inst.toDoubleArray();
 		Instance instance = new DenseInstance(old_inst);
+		int count_miss = 0;
+		Random random = new Random();
 		// Change with value that is available
 		for (int i = 0; i < oldValues.length - 1; i++) {
 			Value v = new Value(oldValues[i]);
@@ -199,47 +203,38 @@ public class FVSHelper {
 			// If not found in the index
 			if (idx == -1) {
 				// Change with substitution
-				instance.setValue(i, substitution[i]);
+				// instance.setValue(i, substitution[i]);
 				// Change into missing
-				// instance.setMissing(i);
+				instance.setMissing(i);
+				count_miss++;
+			} else if (old_inst.isMissing(i)) {
+				count_miss++;
 			}
+		}
+		double miss_rate = (double) count_miss / oldValues.length;
+		if (miss_rate > random.nextFloat()) {
+			instance = null;
 		}
 		return instance;
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	public List<Double> generateEntropy(Map<FV, Collection<FV>> fv_list, int numInstances) {
+	public List<Double> generateEntropy(Map<FV, Collection<FV>> fv_list, int numInstances, int numOfClass) {
 		List<Double> entropies = new ArrayList();
 		Iterator<Entry<FV, Collection<FV>>> iterator = fv_list.entrySet().iterator();
 		while (iterator.hasNext()) {
 			Entry<FV, Collection<FV>> next = iterator.next();
 			FV key = next.getKey();
 			key.setFrequency((double) next.getValue().size() / numInstances);
-			double[] counter = new double[key.getNumLabels()];
+			int[] counter = new int[key.getNumLabels()];
 			for (FV fv : next.getValue()) {
 				int idx = (int) fv.getLabel();
 				counter[idx]++;
 			}
-			key.setEntropy(calculateEntropy(counter, next.getValue().size()));
+			key.setEntropy(MathHelper.getInstance().calculateEntropy(counter, next.getValue().size(), numOfClass));
 			entropies.add(key.getEntropy());
 		}
 		return entropies;
-	}
-
-	public double calculateEntropy(double[] counter, double frequency) {
-		if (frequency == 0)
-			return 0;
-		double entropy = 0;
-		double[] p = new double[counter.length];
-		for (int i = 0; i < counter.length; i++) {
-			p[i] = counter[i] / frequency;
-		}
-		for (int i = 0; i < p.length; i++) {
-			if (p[i] == 0.0F)
-				continue;
-			entropy -= p[i] * (Math.log(p[i]) / Math.log(p.length));
-		}
-		return entropy;
 	}
 
 	public double thresholdSelection(double threshold, Double[] values, ThresholdType thr_alg) {
@@ -310,7 +305,7 @@ public class FVSHelper {
 				System.err.println("FVSHelper.saveIntermediateInstances exception: " + e.getMessage());
 			// e.printStackTrace();
 		}
-		
+
 		if (IS_DEBUG)
 			System.out.println("Saved intermediate instances : " + filename);
 	}
