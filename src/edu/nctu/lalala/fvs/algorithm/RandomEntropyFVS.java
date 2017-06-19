@@ -21,7 +21,7 @@ public class RandomEntropyFVS implements IFVS {
 	/**
 	 * epsilon is the parameter for removal rate <br/>
 	 * 0.0 < epsilon <= 1.0 <br/>
-	 * smaller epsilon means higher FV removal probability
+	 * larger epsilon means higher FV removal probability
 	 */
 	double epsilon = 1.0;
 

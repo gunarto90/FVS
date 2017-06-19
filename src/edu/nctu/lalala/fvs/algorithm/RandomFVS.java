@@ -55,7 +55,7 @@ public class RandomFVS implements IFVS {
 			}
 		}
 		System.out.println("Removed: " + removed);
-		System.out.println(filtered_fv.size());
+		System.out.println("Filtered size: " + filtered_fv.size());
 	}
 
 	@Override
