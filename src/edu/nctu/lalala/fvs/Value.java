@@ -52,6 +52,11 @@ public class Value {
 		else
 			return false;
 	}
+	
+	@Override
+	public int hashCode() {
+		return 1;
+	}
 
 	@Override
 	public String toString() {

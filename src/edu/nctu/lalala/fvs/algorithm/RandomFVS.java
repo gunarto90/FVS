@@ -18,6 +18,7 @@ public class RandomFVS implements IFVS {
 	Map<FV, Collection<FV>> fv_list;
 	Map<FV, Collection<FV>> filtered_fv;
 	int total;
+	double epsilon;
 	
 	public RandomFVS()
 	{
@@ -29,7 +30,8 @@ public class RandomFVS implements IFVS {
 		this.inst = inst;
 		this.output = output;
 		this.fv_list = FVSHelper.getInstance().extractValuesFromData(inst);
-		this.total = (int) ((double) fv_list.size() * (Double)params[0]);
+		this.epsilon = (Double)params[0];
+		filtered_fv.putAll(this.fv_list);
 	}
 
 	/**
@@ -42,25 +44,18 @@ public class RandomFVS implements IFVS {
 	@Override
 	public void applyFVS() {
 		// Filter FV based on the algorithm (Random)
-		if (this.total == 0)
-			return;
-		filtered_fv = new HashMap<FV, Collection<FV>>();
-		filtered_fv.putAll(this.fv_list);
-		Random r = new Random();
-		// Transfer from map to list first
-		List<FV> keys = new ArrayList<>();
-		for (FV k : this.fv_list.keySet())
-			keys.add(k);
-		// int total = r.nextInt(keys.size()); // Randomly remove number of
-		// items
-		int counter = total;
-		while (counter > 0 && keys.size() > 0) {
-			// System.out.println(keys.size());
-			int index = r.nextInt(keys.size());
-			filtered_fv.remove(keys.get(index));
-			keys.remove(index);
-			counter--;
+		Random random = new Random();
+		// Apply removal
+		int removed = 0;
+		for (FV k : fv_list.keySet()) {
+			if (epsilon > random.nextFloat())
+			{
+				filtered_fv.remove(k);
+				removed++;
+			}
 		}
+		System.out.println("Removed: " + removed);
+		System.out.println(filtered_fv.size());
 	}
 
 	@Override

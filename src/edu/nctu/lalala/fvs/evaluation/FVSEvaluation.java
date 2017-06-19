@@ -243,6 +243,8 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+		if(modelSize < 0)
+			modelSize = 1;
 		result[0] = modelSize;
 		result[1] = rule;
 

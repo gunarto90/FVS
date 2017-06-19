@@ -32,6 +32,7 @@
         "RandomFVS",
         "EntropyFVS",
         "RandomEntropyFVS",
+        "ProbabilisticFVS",
         "CorrelationFVS",
         "cfs",
         "consistency",

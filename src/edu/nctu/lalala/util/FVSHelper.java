@@ -16,8 +16,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Map.Entry;
+import java.util.Random;
 import java.util.Set;
 
 import org.json.JSONArray;
@@ -136,16 +136,14 @@ public class FVSHelper {
 	}
 
 	/**
-	 * Calculate linear correlation between 2 columns Reference:
-	 * https://en.wikipedia.org/wiki/Pearson_product-
+	 * Calculate linear correlation between 2 columns <br/>
+	 * Reference: https://en.wikipedia.org/wiki/Pearson_product-
 	 * moment_correlation_coefficient
 	 * 
 	 * @param inst
 	 * @param average
 	 * @param x
-	 *            Column 1
 	 * @param y
-	 *            Column 2
 	 * @return
 	 */
 	public Double calculateLinearCorrelation(Instances inst, Double[] average, int x, int y) {
@@ -169,53 +167,74 @@ public class FVSHelper {
 		return corr;
 	}
 
-	public Instances transformInstances(Instances inst, Instances output, Map<FV, Collection<FV>> map) {
+	public Instances transformInstances(Instances inst, Instances output, Map<FV, Collection<FV>> map,
+			boolean removeInstance) {
 		Set<FV> set = map.keySet();
 		Double[] substitution = calculateAverage(inst);
 		// Prepare the list
 		// First level indicate which attribute the FVS resides in
-		List<List<Value>> list = new ArrayList<>();
+		List<Map<Value, FV>> list = new ArrayList<>();
 		for (int i = 0; i < inst.numAttributes(); i++) {
-			list.add(new ArrayList<Value>());
+			list.add(new HashMap<Value, FV>());
 		}
 		// Build the data structure
 		for (FV fv : set) {
-			list.get(fv.getFeature()).add(new Value(fv.getValue().toString()));
+			Value v = new Value(fv.getValue().toString());
+			list.get(fv.getFeature()).put(v, fv);
 		}
 		for (int i = 0; i < inst.numInstances(); i++) {
-			Instance instance = getFVSFilteredInstance(output, inst.instance(i), list, substitution);
-			if (instance != null)
-				output.add(instance);
+			Instance instance = getFVSFilteredInstance(output, inst.instance(i), list, substitution, removeInstance, false);
+			if (removeInstance && instance == null)
+				continue;
+			output.add(instance);
 		}
+		System.out.println("Input: " + inst.numInstances());
+		System.out.println("Output: " + output.numInstances());
 		return output;
 	}
 
-	public Instance getFVSFilteredInstance(Instances output, Instance old_inst, List<List<Value>> list,
-			Double[] substitution) {
+	public Instances transformInstances(Instances inst, Instances output, Map<FV, Collection<FV>> map) {
+		return transformInstances(inst, output, map, false);
+	}
+	
+	public Instance getFVSFilteredInstance(Instances output, Instance old_inst, List<Map<Value, FV>> map,
+			Double[] substitution, boolean removeInstance, boolean average) {
 		double[] oldValues = old_inst.toDoubleArray();
 		Instance instance = new DenseInstance(old_inst);
 		int count_miss = 0;
 		Random random = new Random();
-		// Change with value that is available
 		for (int i = 0; i < oldValues.length - 1; i++) {
 			Value v = new Value(oldValues[i]);
-			int idx = list.get(i).indexOf(v);
-			// If not found in the index
-			if (idx == -1) {
-				// Change with substitution
-				// instance.setValue(i, substitution[i]);
-				// Change into missing
-				instance.setMissing(i);
+			FV fv = map.get(i).getOrDefault(v, null);
+			if (fv == null) {
+				replaceValue(substitution, average, instance, i);
 				count_miss++;
 			} else if (old_inst.isMissing(i)) {
 				count_miss++;
+			} 
+		}
+		if (removeInstance) {
+			/* Remove the instance using miss rate probability */
+			double miss_rate = (double) count_miss / oldValues.length;
+			if (miss_rate > random.nextFloat()) {
+				instance = null;
 			}
 		}
-		double miss_rate = (double) count_miss / oldValues.length;
-		if (miss_rate > random.nextFloat()) {
-			instance = null;
-		}
 		return instance;
+	}
+
+	public Instance getFVSFilteredInstance(Instances output, Instance old_inst, List<Map<Value, FV>> map,
+			Double[] substitution) {
+		return getFVSFilteredInstance(output, old_inst, map, substitution, false, false);
+	}
+	
+	public void replaceValue(Double[] substitution, boolean average, Instance instance, int i) {
+		/* Change with substitution */
+		if (average)
+			instance.setValue(i, substitution[i]);
+		/* Change into missing */
+		else
+			instance.setMissing(i);
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
@@ -481,6 +500,8 @@ public class FVSHelper {
 				result.add(Preprocessing_Algorithm.FVS_Correlation);
 			else if (s.equalsIgnoreCase("RandomEntropyFVS"))
 				result.add(Preprocessing_Algorithm.FVS_Random_Entropy);
+			else if (s.equalsIgnoreCase("ProbabilisticFVS"))
+				result.add(Preprocessing_Algorithm.FVS_Probabilistic);
 			else if (s.equalsIgnoreCase("cfs"))
 				result.add(Preprocessing_Algorithm.FS_CFS);
 			else if (s.equalsIgnoreCase("consistency"))
@@ -507,6 +528,7 @@ public class FVSHelper {
 		case FVS_Random:
 		case FVS_Entropy:
 		case FVS_Random_Entropy:
+		case FVS_Probabilistic:
 			pt = PreprocessingType.FVS;
 			break;
 		case IS_Reservoir:

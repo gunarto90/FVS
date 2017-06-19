@@ -37,8 +37,9 @@ import weka.filters.unsupervised.instance.ReservoirSample;
 // Updated March 3rd, 2016
 public class Main {
 	private static final boolean IS_LOG_INTERMEDIATE = true;
-//	private static final double[] DOUBLE_PARAMS = { 1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1 };
-	private static final double[] DOUBLE_PARAMS = { 1.0 };
+	// private static double[] DOUBLE_PARAMS = { 1.0, 0.9, 0.8, 0.7, 0.6, 0.5,
+	// 0.4, 0.3, 0.2, 0.1 };
+	private static double[] DOUBLE_PARAMS = { 1.0, 1.0, 1.0, 0.5, 0.5, 0.5, 0.1, 0.1, 0.1 };
 
 	private static final String DEFAULT_DATASET_FOLDER = "dataset";
 	private static final String NOMINAL_FOLDER = DEFAULT_DATASET_FOLDER + "/nominal/";
@@ -102,6 +103,15 @@ public class Main {
 		/************************/
 		String lookupFolder = TEST_FOLDER;
 		String customConfigFile = null;
+
+		int repeat = 3;
+		double[] options = { 0.3, 0.5, 0.7, 0.9 };
+		DOUBLE_PARAMS = new double[options.length * repeat];
+		for (int i = 0; i < options.length; i++) {
+			for (int j = 0; j < repeat; j++) {
+				DOUBLE_PARAMS[i * repeat + j] = options[i];
+			}
+		}
 
 		// Init using args if possible
 		if (args.length == 0) {
@@ -214,7 +224,8 @@ public class Main {
 									ThresholdType.NA, null);
 						} else if (pt == PreprocessingType.FVS) {
 							if (p_alg == Preprocessing_Algorithm.FVS_Random
-									|| p_alg == Preprocessing_Algorithm.FVS_Random_Entropy) {
+									|| p_alg == Preprocessing_Algorithm.FVS_Random_Entropy
+									|| p_alg == Preprocessing_Algorithm.FVS_Probabilistic) {
 								for (int i = 0; i < DOUBLE_PARAMS.length; i++) {
 									Double double_param = DOUBLE_PARAMS[i];
 									if (double_param == 1 && p_alg == Preprocessing_Algorithm.FVS_Random)

@@ -1,31 +1,36 @@
 package edu.nctu.lalala.fvs.algorithm;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
+import java.util.Set;
 
 import edu.nctu.lalala.fvs.FV;
+import edu.nctu.lalala.fvs.Value;
 import edu.nctu.lalala.fvs.interfaces.IFVS;
 import edu.nctu.lalala.util.FVSHelper;
 import edu.nctu.lalala.util.MathHelper;
+import weka.core.DenseInstance;
+import weka.core.Instance;
 import weka.core.Instances;
 
-public class RandomEntropyFVS implements IFVS {
+public class ProbabilisticFVS implements IFVS {
 	Instances inst;
 	Instances output;
 	Map<FV, Collection<FV>> fv_list;
 	Map<FV, Collection<FV>> filtered_fv;
 	/**
-	 * epsilon is the parameter for removal rate <br/>
+	 * epsilon is the parameter for removal rate (optimistic removal) <br/>
 	 * 0.0 < epsilon <= 1.0 <br/>
-	 * smaller epsilon means higher FV removal probability
+	 * higher epsilon means higher FV removal probability
 	 */
 	double epsilon = 1.0;
 
-	public RandomEntropyFVS() {
+	public ProbabilisticFVS() {
 		this.filtered_fv = new HashMap<FV, Collection<FV>>();
 	}
 
@@ -94,26 +99,74 @@ public class RandomEntropyFVS implements IFVS {
 
 	@Override
 	public void applyFVS() {
-		Random random = new Random();
-		// Apply removal
-		int removed = 0;
-		for (FV k : fv_list.keySet()) {
-//			if (k.getEntropy() > (random.nextFloat() * epsilon))
-//			if (k.getPhi() < (random.nextFloat() * epsilon))
-			if (k.getIg() < (random.nextFloat() * epsilon)) 
-			{
-				filtered_fv.remove(k);
-				removed++;
-			}
-		}
-		System.out.println("Removed: " + removed);
-		System.out.println("Filtered FV Size: " + filtered_fv.size());
+		
 	}
 
 	@Override
 	public Instances output() {
 		boolean removeInstance = true;
-		Instances output = FVSHelper.getInstance().transformInstances(inst, this.output, filtered_fv, removeInstance);
+		boolean probabilistic = true;
+		boolean average = false;
+		Instances output = transformInstances(inst, this.output, filtered_fv, removeInstance, probabilistic, average);
 		return output;
+	}
+	
+	private Instances transformInstances(Instances inst, Instances output, Map<FV, Collection<FV>> map,
+			boolean removeInstance, boolean probabilistic, boolean average) {
+		Set<FV> set = map.keySet();
+		Double[] substitution = FVSHelper.getInstance().calculateAverage(inst);
+		// Prepare the list
+		// First level indicate which attribute the FVS resides in
+		List<Map<Value, FV>> list = new ArrayList<>();
+		for (int i = 0; i < inst.numAttributes(); i++) {
+			list.add(new HashMap<Value, FV>());
+		}
+		// Build the data structure
+		for (FV fv : set) {
+			Value v = new Value(fv.getValue().toString());
+			list.get(fv.getFeature()).put(v, fv);
+		}
+		for (int i = 0; i < inst.numInstances(); i++) {
+			Instance instance = getFVSFilteredInstance(output, inst.instance(i), list, substitution, removeInstance, probabilistic, average);
+			if (removeInstance && instance == null)
+				continue;
+			output.add(instance);
+		}
+		System.out.println("Input: " + inst.numInstances());
+		System.out.println("Output: " + output.numInstances());
+		return output;
+	}
+	
+	private Instance getFVSFilteredInstance(Instances output, Instance old_inst, List<Map<Value, FV>> map,
+			Double[] substitution, boolean removeInstance, boolean probabilistic, boolean average) {
+		double[] oldValues = old_inst.toDoubleArray();
+		Instance instance = new DenseInstance(old_inst);
+		int count_miss = 0;
+		Random random = new Random();
+		for (int i = 0; i < oldValues.length - 1; i++) {
+			Value v = new Value(oldValues[i]);
+			FV fv = map.get(i).getOrDefault(v, null);
+			if (fv == null) {
+				FVSHelper.getInstance().replaceValue(substitution, average, instance, i);
+				count_miss++;
+			} else if (old_inst.isMissing(i)) {
+				count_miss++;
+			} else if (fv != null && probabilistic) {
+				double val = fv.getIg();
+				double rr = random.nextFloat() * epsilon;
+				if (val < rr) {
+					FVSHelper.getInstance().replaceValue(substitution, average, instance, i);
+					count_miss++;
+				}
+			}
+		}
+		if (removeInstance) {
+			/* Remove the instance using miss rate probability */
+			double miss_rate = (double) count_miss / oldValues.length;
+			if (miss_rate > random.nextFloat()) {
+				instance = null;
+			}
+		}
+		return instance;
 	}
 }

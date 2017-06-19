@@ -31,12 +31,15 @@ public class FV implements Comparable<FV> {
 	private double entropy;
 	private double phi;
 	private double ig;
+	private double symmetricUncertainty;
+	private double probability;
 	private int numOfClassLabels;
 
 	public FV(int feature, Object value, double label) {
 		this.feature = feature;
 		this.value = value;
 		this.label = label;
+		this.probability = 0.5;
 	}
 
 	@Override
@@ -147,5 +150,21 @@ public class FV implements Comparable<FV> {
 
 	public void setIg(double ig) {
 		this.ig = ig;
+	}
+
+	public double getProbability() {
+		return probability;
+	}
+
+	public void setProbability(double probability) {
+		this.probability = probability;
+	}
+
+	public double getSymmetricUncertainty() {
+		return symmetricUncertainty;
+	}
+
+	public void setSymmetricUncertainty(double symmetricUncertainty) {
+		this.symmetricUncertainty = symmetricUncertainty;
 	}
 }

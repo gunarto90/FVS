@@ -17,6 +17,7 @@ import edu.nctu.lalala.enums.Preprocessing_Algorithm;
 import edu.nctu.lalala.enums.ThresholdType;
 import edu.nctu.lalala.fvs.algorithm.CorrelationFVS;
 import edu.nctu.lalala.fvs.algorithm.EntropyFVS;
+import edu.nctu.lalala.fvs.algorithm.ProbabilisticFVS;
 import edu.nctu.lalala.fvs.algorithm.RandomEntropyFVS;
 import edu.nctu.lalala.fvs.algorithm.RandomFVS;
 import edu.nctu.lalala.fvs.interfaces.IFVS;
@@ -99,20 +100,10 @@ public class FVS_Filter extends Filter {
 		// Initialization
 		Instances inst = getInputFormat();
 		Instances output = getOutputFormat();
+		Double epsilon;
 
 		// Apply removal based on Algorithm
 		switch (this.algo) {
-		case Original:
-			setFvs(new RandomFVS());
-			getFvs().input(inst, output, (Double) (0.0));
-			break;
-		case FVS_Random:
-			setFvs(new RandomFVS());
-			double percent_filter = 80.0;
-			if (params.length > 0)
-				percent_filter = params[0];
-			getFvs().input(inst, output, percent_filter);
-			break;
 		case FVS_Entropy:
 			setFvs(new EntropyFVS(thr_alg));
 			Double threshold = 0.5;
@@ -127,16 +118,31 @@ public class FVS_Filter extends Filter {
 				topk = params[0];
 			getFvs().input(inst, output, topk);
 			break;
-		case FVS_Random_Entropy:
-			setFvs(new RandomEntropyFVS());
-			Double epsilon = 1.0;
+		case FVS_Random:
+			setFvs(new RandomFVS());
+			epsilon = 0.5;
 			if (params.length > 0)
 				epsilon = params[0];
 			getFvs().input(inst, output, epsilon);
 			break;
+		case FVS_Random_Entropy:
+			setFvs(new RandomEntropyFVS());
+			epsilon = 1.0;
+			if (params.length > 0)
+				epsilon = params[0];
+			getFvs().input(inst, output, epsilon);
+			break;
+		case FVS_Probabilistic:
+			setFvs(new ProbabilisticFVS());
+			epsilon = 0.5;
+			if (params.length > 0)
+				epsilon = params[0];
+			getFvs().input(inst, output, epsilon);
+			break;
+		case Original:
 		default:
 			setFvs(new RandomFVS());
-			getFvs().input(inst, output, (Double) (0.0));
+			getFvs().input(inst, output, 0.0);
 			break;
 		}
 
