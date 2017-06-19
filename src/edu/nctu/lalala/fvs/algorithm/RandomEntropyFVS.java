@@ -41,22 +41,23 @@ public class RandomEntropyFVS implements IFVS {
 
 	private void preprocessing(Instances inst) {
 		int[] act_dist = new int[inst.numClasses()];
-		for (int i=0; i<inst.numInstances(); i++) {
+		for (int i = 0; i < inst.numInstances(); i++) {
 			act_dist[(int) inst.get(i).classValue()]++;
 		}
 		double act_ent = MathHelper.getInstance().calculateEntropy(act_dist, inst.numInstances(), inst.numClasses());
-//		System.out.println(act_ent);
-		
+		// System.out.println(act_ent);
+
 		/* Generating entropy and frequency for each FV */
-		List<Double> entropies = FVSHelper.getInstance().generateEntropy(fv_list, inst.numInstances(), inst.numClasses());
+		List<Double> entropies = FVSHelper.getInstance().generateEntropy(fv_list, inst.numInstances(),
+				inst.numClasses());
 		filtered_fv.putAll(fv_list);
-		
+
 		double max_ig = 0.0;
 		double max_su = 0.0;
 		Map<FV, Double> igs = MathHelper.getInstance().calculateIG(fv_list, act_dist, act_ent, this.inst.numClasses());
 		for (Entry<FV, Double> entry : igs.entrySet()) {
 			double ig = entry.getValue();
-			double su = 2*ig/(entry.getKey().getEntropy()+act_ent);
+			double su = 2 * ig / (entry.getKey().getEntropy() + act_ent);
 			entry.getKey().setIg(ig);
 			max_ig = Math.max(max_ig, ig);
 			entry.getKey().setSymmetricUncertainty(su);
@@ -67,29 +68,30 @@ public class RandomEntropyFVS implements IFVS {
 			for (Entry<FV, Double> entry : igs.entrySet()) {
 				double ig = entry.getKey().getIg() / max_ig;
 				entry.getKey().setIg(ig);
-				if (max_su > 0.0)
-				{
+				if (max_su > 0.0) {
 					double su = entry.getKey().getSymmetricUncertainty() / max_su;
 					entry.getKey().setSymmetricUncertainty(su);
 				}
 			}
 		}
 
-//		Map<FV, Double> chi = MathHelper.getInstance().calculateChi(fv_list, this.inst.numClasses());
-//		double max_phi = 0.0;
-//		for (Entry<FV, Double> entry : chi.entrySet()) {
-//			double phi = Math.sqrt(entry.getValue() / this.inst.numInstances()
-//					/ Math.min(this.inst.numInstances() - 1, this.inst.numAttributes() - 1));
-//			max_phi = Math.max(phi, max_phi);
-//			entry.getKey().setPhi(phi);
-//		}
+		// Map<FV, Double> chi = MathHelper.getInstance().calculateChi(fv_list,
+		// this.inst.numClasses());
+		// double max_phi = 0.0;
+		// for (Entry<FV, Double> entry : chi.entrySet()) {
+		// double phi = Math.sqrt(entry.getValue() / this.inst.numInstances()
+		// / Math.min(this.inst.numInstances() - 1, this.inst.numAttributes() -
+		// 1));
+		// max_phi = Math.max(phi, max_phi);
+		// entry.getKey().setPhi(phi);
+		// }
 		// Normalize to range 0-1
-//		if (max_phi > 0.0) {
-//			for (Entry<FV, Double> entry : chi.entrySet()) {
-//				double phi = entry.getKey().getPhi() / max_phi;
-//				entry.getKey().setPhi(phi);
-//			}
-//		}
+		// if (max_phi > 0.0) {
+		// for (Entry<FV, Double> entry : chi.entrySet()) {
+		// double phi = entry.getKey().getPhi() / max_phi;
+		// entry.getKey().setPhi(phi);
+		// }
+		// }
 	}
 
 	@Override
@@ -98,16 +100,19 @@ public class RandomEntropyFVS implements IFVS {
 		// Apply removal
 		int removed = 0;
 		for (FV k : fv_list.keySet()) {
-//			if (k.getEntropy() > (random.nextFloat() * epsilon))
-//			if (k.getPhi() < (random.nextFloat() * epsilon))
-			if (k.getIg() < (random.nextFloat() * epsilon)) 
+			// if (k.getEntropy() > (random.nextFloat() * epsilon))
+			// if (k.getPhi() < (random.nextFloat() * epsilon))
+			if (k.getIg() < (random.nextFloat() * epsilon))
+			// if(k.getSymmetricUncertainty() < (random.nextFloat() * epsilon))
 			{
 				filtered_fv.remove(k);
 				removed++;
 			}
 		}
-		System.out.println("Removed: " + removed);
-		System.out.println("Filtered FV Size: " + filtered_fv.size());
+		if (FVSHelper.getInstance().getDebugStatus()) {
+			System.out.println("Removed: " + removed);
+			System.out.println("Filtered FV Size: " + filtered_fv.size());
+		}
 	}
 
 	@Override

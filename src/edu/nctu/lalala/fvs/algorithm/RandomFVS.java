@@ -19,9 +19,8 @@ public class RandomFVS implements IFVS {
 	Map<FV, Collection<FV>> filtered_fv;
 	int total;
 	double epsilon;
-	
-	public RandomFVS()
-	{
+
+	public RandomFVS() {
 		this.filtered_fv = new HashMap<FV, Collection<FV>>();
 	}
 
@@ -30,7 +29,7 @@ public class RandomFVS implements IFVS {
 		this.inst = inst;
 		this.output = output;
 		this.fv_list = FVSHelper.getInstance().extractValuesFromData(inst);
-		this.epsilon = (Double)params[0];
+		this.epsilon = (Double) params[0];
 		filtered_fv.putAll(this.fv_list);
 	}
 
@@ -48,14 +47,15 @@ public class RandomFVS implements IFVS {
 		// Apply removal
 		int removed = 0;
 		for (FV k : fv_list.keySet()) {
-			if (epsilon > random.nextFloat())
-			{
+			if (epsilon > random.nextFloat()) {
 				filtered_fv.remove(k);
 				removed++;
 			}
 		}
-		System.out.println("Removed: " + removed);
-		System.out.println("Filtered size: " + filtered_fv.size());
+		if (FVSHelper.getInstance().getDebugStatus()) {
+			System.out.println("Removed: " + removed);
+			System.out.println("Filtered FV Size: " + filtered_fv.size());
+		}
 	}
 
 	@Override

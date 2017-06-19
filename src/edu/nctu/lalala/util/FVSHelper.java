@@ -188,8 +188,10 @@ public class FVSHelper {
 				continue;
 			output.add(instance);
 		}
-		System.out.println("Input: " + inst.numInstances());
-		System.out.println("Output: " + output.numInstances());
+		if (FVSHelper.getInstance().getDebugStatus()) {
+			System.out.println("Input: " + inst.numInstances());
+			System.out.println("Output: " + output.numInstances());
+		}
 		return output;
 	}
 

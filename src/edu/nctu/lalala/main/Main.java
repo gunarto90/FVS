@@ -104,8 +104,8 @@ public class Main {
 		String lookupFolder = TEST_FOLDER;
 		String customConfigFile = null;
 
-		int repeat = 3;
-		double[] options = { 0.3, 0.5, 0.7, 0.9 };
+		int repeat = 5;
+		double[] options = { 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.9, 1.0 };
 		DOUBLE_PARAMS = new double[options.length * repeat];
 		for (int i = 0; i < options.length; i++) {
 			for (int j = 0; j < repeat; j++) {
