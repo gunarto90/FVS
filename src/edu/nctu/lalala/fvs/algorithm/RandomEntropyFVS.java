@@ -100,11 +100,17 @@ public class RandomEntropyFVS implements IFVS {
 		// Apply removal
 		int removed = 0;
 		for (FV k : fv_list.keySet()) {
+			double rr = random.nextFloat() * epsilon;
+			boolean condition = k.getIg() < rr;
+			if (FVSHelper.getInstance().getInformationMetric().equals("entropy"))
+				condition = k.getEntropy() > rr;
+			else
+				condition = k.getIg() < rr;
 			// if (k.getEntropy() > (random.nextFloat() * epsilon))
 			// if (k.getPhi() < (random.nextFloat() * epsilon))
-			if (k.getIg() < (random.nextFloat() * epsilon))
+			// if (k.getIg() < (random.nextFloat() * epsilon))
 			// if(k.getSymmetricUncertainty() < (random.nextFloat() * epsilon))
-			{
+			if (condition) {
 				filtered_fv.remove(k);
 				removed++;
 			}
