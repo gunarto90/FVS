@@ -49,6 +49,7 @@ public class FVSHelper {
 	private boolean ADD_NOISE = false;
 	private int NOISE_LEVEL = 10; // 10 Percents
 	private boolean IS_DEBUG = true;
+	private String INFORMATION_METRIC = "ig";
 
 	private FVSHelper() {
 		System.err.println(timestamp);
@@ -365,7 +366,7 @@ public class FVSHelper {
 	public Map<String, List> initConfig(String configFilename) {
 		System.err.println("Read config from: " + configFilename);
 		Map<String, List> dict = new HashMap<>();
-		String filename = CONFIG_FOLDER + configFilename;
+		String filename = this.CONFIG_FOLDER + configFilename;
 		StringBuilder sb = new StringBuilder();
 		try (BufferedReader in = Files.newBufferedReader(Paths.get(filename), Charset.forName("UTF-8"))) {
 			String line = null;
@@ -392,9 +393,9 @@ public class FVSHelper {
 			JSONObject obj = null;
 			obj = rootObject.getJSONObject("folder_setup");
 			if (obj != null) {
-				INTERMEDIATE_FOLDER = obj.get("intermediate").toString();
-				if (!INTERMEDIATE_FOLDER.endsWith("\\") && !INTERMEDIATE_FOLDER.endsWith("/"))
-					INTERMEDIATE_FOLDER = INTERMEDIATE_FOLDER + "\\";
+				this.INTERMEDIATE_FOLDER = obj.get("intermediate").toString();
+				if (!this.INTERMEDIATE_FOLDER.endsWith("\\") && !this.INTERMEDIATE_FOLDER.endsWith("/"))
+					this.INTERMEDIATE_FOLDER = this.INTERMEDIATE_FOLDER + "\\";
 			}
 			/* Initialize add noise */
 			obj = rootObject.getJSONObject("noise");
@@ -402,14 +403,20 @@ public class FVSHelper {
 				ADD_NOISE = obj.getBoolean("enable_noise");
 				NOISE_LEVEL = obj.getInt("noise_level");
 			}
-			/* Initialize debug status */
+			/* Initialize information metric */
 			try {
-				IS_DEBUG = rootObject.getBoolean("debug");
+				this.INFORMATION_METRIC = rootObject.getString("info");
 			} catch (Exception ex) {
 			}
-			if (IS_DEBUG) {
+			/* Initialize debug status */
+			try {
+				this.IS_DEBUG = rootObject.getBoolean("debug");
+			} catch (Exception ex) {
+			}
+			if (this.IS_DEBUG) {
 				System.out.println("Debug mode is ON");
-				System.out.println(String.format("Add noise: %s (%d percents)", ADD_NOISE, NOISE_LEVEL));
+				System.out.println(String.format("Add noise: %s (%d percents)", this.ADD_NOISE, this.NOISE_LEVEL));
+				System.out.println("Information metric: " + getInformationMetric());
 			}
 		} catch (JSONException e) {
 			// JSON Parsing error
@@ -566,5 +573,9 @@ public class FVSHelper {
 
 	public boolean getDebugStatus() {
 		return IS_DEBUG;
+	}
+
+	public String getInformationMetric() {
+		return INFORMATION_METRIC;
 	}
 }

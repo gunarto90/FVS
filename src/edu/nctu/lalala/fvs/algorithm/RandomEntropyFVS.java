@@ -96,18 +96,37 @@ public class RandomEntropyFVS implements IFVS {
 
 	@Override
 	public void applyFVS() {
+		boolean show_information_stats = false;
 		Random random = new Random();
 		// Apply removal
 		int removed = 0;
+		double average_entropy = 0.0;
+		double average_ig = 0.0;
 		for (FV k : fv_list.keySet()) {
+			if (show_information_stats) {
+				average_entropy += k.getEntropy();
+				average_ig += k.getIg();
+			}
+			double rr = random.nextFloat() * epsilon;
+			boolean condition = k.getIg() < rr;
+			if (FVSHelper.getInstance().getInformationMetric().equals("entropy"))
+				condition = k.getEntropy() > rr;
+			else
+				condition = k.getIg() < rr;
 			// if (k.getEntropy() > (random.nextFloat() * epsilon))
 			// if (k.getPhi() < (random.nextFloat() * epsilon))
-			if (k.getIg() < (random.nextFloat() * epsilon))
+			// if (k.getIg() < (random.nextFloat() * epsilon))
 			// if(k.getSymmetricUncertainty() < (random.nextFloat() * epsilon))
-			{
+			if (condition) {
 				filtered_fv.remove(k);
 				removed++;
 			}
+		}
+		if (show_information_stats) {
+			average_entropy /= fv_list.size();
+			average_ig /= fv_list.size();
+			System.out.println("Entropy: " + average_entropy);
+			System.out.println("IG: " + average_ig);
 		}
 		if (FVSHelper.getInstance().getDebugStatus()) {
 			System.out.println("Removed: " + removed);

@@ -154,9 +154,14 @@ public class ProbabilisticFVS implements IFVS {
 			} else if (old_inst.isMissing(i)) {
 				count_miss++;
 			} else if (fv != null && probabilistic) {
-				double val = fv.getIg();
 				double rr = random.nextFloat() * epsilon;
-				if (val < rr) {
+				boolean condition = fv.getIg() < rr;
+				if (FVSHelper.getInstance().getInformationMetric().equals("entropy"))
+					condition = fv.getEntropy() > rr;
+				else
+					condition = fv.getIg() < rr;
+				if (condition) 
+				{
 					FVSHelper.getInstance().replaceValue(substitution, average, instance, i);
 					count_miss++;
 				}

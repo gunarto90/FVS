@@ -48,5 +48,6 @@
         "enable_noise":false,
         "noise_level":10
     },
+    "info" : "ig",
     "debug": true
 }

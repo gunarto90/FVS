@@ -58,7 +58,7 @@ public class Main {
 	 */
 	private static final String REPORT_FORMAT = "%s\t%s\t%s\t%s\t%s\t%.3f\t%d\t%.3f\t%d\t%.3f\t%d\t%d\n";
 
-	private int CROSS_VALIDATION = 3;
+	private int CROSS_VALIDATION = 10;
 
 	private static int NUMBER_OF_BINS = 10;
 
@@ -105,7 +105,7 @@ public class Main {
 		String customConfigFile = null;
 
 		int repeat = 5;
-		double[] options = { 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.9, 1.0 };
+		double[] options = { 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0 };
 		DOUBLE_PARAMS = new double[options.length * repeat];
 		for (int i = 0; i < options.length; i++) {
 			for (int j = 0; j < repeat; j++) {
@@ -167,6 +167,7 @@ public class Main {
 			if (!datasetName.endsWith(".arff"))
 				continue;
 			try {
+				System.out.println(datasetName);
 				// Load original data
 				Instances data = null;
 				// For each discretization
