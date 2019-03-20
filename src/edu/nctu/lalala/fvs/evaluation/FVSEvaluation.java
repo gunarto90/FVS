@@ -10,6 +10,7 @@ import java.util.Random;
 import edu.nctu.lalala.enums.ClassifierType;
 import edu.nctu.lalala.enums.PreprocessingType;
 import edu.nctu.lalala.enums.Preprocessing_Algorithm;
+import edu.nctu.lalala.fvs.interfaces.IFVS;
 import edu.nctu.lalala.util.FVSHelper;
 import weka.classifiers.Classifier;
 import weka.classifiers.bayes.NaiveBayes;
@@ -32,7 +33,7 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 	private double runTime;
 	private long memoryUsage;
 	private double double_param;
-	
+
 	MemoryUsage heapMemoryUsage = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
 
 	public FVSEvaluation(Instances data) throws Exception {
@@ -55,19 +56,17 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 	}
 
 	public void stratifiedFold(ClassifierType type, int folds, Preprocessing_Algorithm p_alg, Filter filter) {
+		stratifiedFold(type, folds, p_alg, filter, null, 0.0);
+	}
+
+	public void stratifiedFold(ClassifierType type, int folds, Preprocessing_Algorithm p_alg, Filter filter,
+			String context, double double_param) {
 		int seed = 1;
 		Random rand = new Random(seed);
 		Instances randData = new Instances(data);
 		randData.randomize(rand);
 		randData.stratify(folds);
-		
-//		if(FVSHelper.getInstance().getDebugStatus())
-//		{
-//			System.err.println("Data #Instances: " + data.numInstances());
-//			System.err.println("RandData #Instances: " + randData.numInstances());
-//			System.err.println("Stratified kfold: " + folds);
-//		}
-		
+
 		double[] accuracies = new double[folds];
 		long[] models = new long[folds];
 		long[] rules = new long[folds];
@@ -82,7 +81,6 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 			long[] tempModel = getModelSize(tempClassifier);
 			baseModel = tempModel[0];
 			tempModel = null;
-			// System.err.println("Base model size: " + baseModel);
 		} catch (Exception e1) {
 		}
 		tempClassifier = null;
@@ -110,13 +108,21 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 				try {
 					filter.setInputFormat(train);
 				} catch (Exception e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 				Object[] temp = applyFilter(filter, train, pt);
 				train = (Instances) temp[0];
 				run_time[n] = (double) temp[1];
 				memories[n] = (long) temp[2];
+
+				if (n == 0 && FVSHelper.getInstance().getDumpModelStatus()) {
+					// TODO dump model does not work when we generalize
+					try {
+//						((SuperFVS) filter).dumpModel();
+					} catch (Exception ex) {
+
+					}
+				}
 			}
 
 			int correct = 0;
@@ -144,6 +150,12 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 				}
 				accuracy = (double) correct / test.numInstances();
 				accuracies[n] = accuracy;
+				// TODO dump model
+				if (n == 0 && FVSHelper.getInstance().getDumpModelStatus()) {
+//					FVSHelper.getInstance().logFile("Classifier of " + p_alg.toString());
+//					FVSHelper.getInstance().logFile(context + " : " + double_param + " : " + accuracy);
+//					FVSHelper.getInstance().logFile(cl.toString());
+				}
 			} catch (Exception e) {
 
 			}
@@ -216,7 +228,10 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 		rule = 0;
 		try {
 			J48 a = (J48) cl;
-			rule = (int) a.measureNumRules();
+			// Original
+//			rule = (int) a.measureNumRules();
+			// Tree size revision
+			rule = (int) a.measureTreeSize();
 		} catch (Exception e) {
 		}
 		if (rule == 0.0) {
@@ -243,7 +258,7 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		if(modelSize < 0)
+		if (modelSize < 0)
 			modelSize = 1;
 		result[0] = modelSize;
 		result[1] = rule;

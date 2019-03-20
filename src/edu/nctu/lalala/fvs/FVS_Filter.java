@@ -125,14 +125,14 @@ public class FVS_Filter extends Filter {
 				epsilon = params[0];
 			getFvs().input(inst, output, epsilon);
 			break;
-		case FVS_Random_Entropy:
+		case FVS_Probabilistic_Regular:
 			setFvs(new RandomEntropyFVS());
 			epsilon = 1.0;
 			if (params.length > 0)
 				epsilon = params[0];
 			getFvs().input(inst, output, epsilon);
 			break;
-		case FVS_Probabilistic:
+		case FVS_Probabilistic_Plus:
 			setFvs(new ProbabilisticFVS());
 			epsilon = 0.5;
 			if (params.length > 0)

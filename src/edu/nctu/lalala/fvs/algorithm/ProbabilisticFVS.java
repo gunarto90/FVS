@@ -1,7 +1,11 @@
 package edu.nctu.lalala.fvs.algorithm;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +21,7 @@ import edu.nctu.lalala.util.MathHelper;
 import weka.core.DenseInstance;
 import weka.core.Instance;
 import weka.core.Instances;
+import weka.core.converters.ArffSaver;
 
 public class ProbabilisticFVS implements IFVS {
 	Instances inst;
@@ -53,12 +58,12 @@ public class ProbabilisticFVS implements IFVS {
 //		System.out.println(act_ent);
 		
 		/* Generating entropy and frequency for each FV */
-		List<Double> entropies = FVSHelper.getInstance().generateEntropy(fv_list, inst.numInstances(), inst.numClasses());
+		FVSHelper.getInstance().generateEntropy(fv_list, inst.numInstances(), inst.numClasses());
 		filtered_fv.putAll(fv_list);
 		
 		double max_ig = 0.0;
 		double max_su = 0.0;
-		Map<FV, Double> igs = MathHelper.getInstance().calculateIG(fv_list, act_dist, act_ent, this.inst.numClasses());
+		Map<FV, Double> igs = MathHelper.getInstance().calculateIG(filtered_fv, act_dist, act_ent, this.inst.numClasses());
 		for (Entry<FV, Double> entry : igs.entrySet()) {
 			double ig = entry.getValue();
 			double su = 2*ig/(entry.getKey().getEntropy()+act_ent);
@@ -108,6 +113,7 @@ public class ProbabilisticFVS implements IFVS {
 		boolean probabilistic = true;
 		boolean average = false;
 		Instances output = transformInstances(inst, this.output, filtered_fv, removeInstance, probabilistic, average);
+		writeToFile(output, true);
 		return output;
 	}
 	
@@ -175,5 +181,24 @@ public class ProbabilisticFVS implements IFVS {
 			}
 		}
 		return instance;
+	}
+	
+	private void writeToFile(Instances output, boolean filtered) {
+		if (FVSHelper.getInstance().getDumpModelStatus()) {
+			ArffSaver saver = new ArffSaver();
+			saver.setInstances(output);
+			try {
+				File f = null;
+				if (filtered)
+					f = File.createTempFile(String.format("Random %.1f Probabilistic FVS", this.epsilon), ".arff");
+				else
+					f = File.createTempFile(String.format("Original %.1f Random Probabilistic FVS", this.epsilon), ".arff");
+				System.out.println(f.getAbsolutePath());
+				saver.setFile(f);
+				saver.writeBatch();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 	}
 }

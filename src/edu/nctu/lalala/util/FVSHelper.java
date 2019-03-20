@@ -50,6 +50,7 @@ public class FVSHelper {
 	private int NOISE_LEVEL = 10; // 10 Percents
 	private boolean IS_DEBUG = true;
 	private String INFORMATION_METRIC = "ig";
+	private boolean DUMP_MODEL = false;
 
 	private FVSHelper() {
 		System.err.println(timestamp);
@@ -366,7 +367,7 @@ public class FVSHelper {
 	public Map<String, List> initConfig(String configFilename) {
 		System.err.println("Read config from: " + configFilename);
 		Map<String, List> dict = new HashMap<>();
-		String filename = this.CONFIG_FOLDER + configFilename;
+		String filename = CONFIG_FOLDER + configFilename;
 		StringBuilder sb = new StringBuilder();
 		try (BufferedReader in = Files.newBufferedReader(Paths.get(filename), Charset.forName("UTF-8"))) {
 			String line = null;
@@ -417,6 +418,11 @@ public class FVSHelper {
 				System.out.println("Debug mode is ON");
 				System.out.println(String.format("Add noise: %s (%d percents)", this.ADD_NOISE, this.NOISE_LEVEL));
 				System.out.println("Information metric: " + getInformationMetric());
+			}
+			/* Initialize dump classifier status */
+			try {
+				this.DUMP_MODEL = rootObject.getBoolean("dump_model");
+			} catch (Exception ex) {
 			}
 		} catch (JSONException e) {
 			// JSON Parsing error
@@ -508,13 +514,21 @@ public class FVSHelper {
 			else if (s.equalsIgnoreCase("CorrelationFVS"))
 				result.add(Preprocessing_Algorithm.FVS_Correlation);
 			else if (s.equalsIgnoreCase("RandomEntropyFVS"))
-				result.add(Preprocessing_Algorithm.FVS_Random_Entropy);
+				result.add(Preprocessing_Algorithm.FVS_Probabilistic_Regular);
 			else if (s.equalsIgnoreCase("ProbabilisticFVS"))
-				result.add(Preprocessing_Algorithm.FVS_Probabilistic);
+				result.add(Preprocessing_Algorithm.FVS_Probabilistic_Plus);
 			else if (s.equalsIgnoreCase("cfs"))
 				result.add(Preprocessing_Algorithm.FS_CFS);
 			else if (s.equalsIgnoreCase("consistency"))
 				result.add(Preprocessing_Algorithm.FS_Consistency);
+			else if (s.equalsIgnoreCase("IWSS_FS"))
+				result.add(Preprocessing_Algorithm.FS_IWSS);
+			else if (s.equalsIgnoreCase("MOEA_FS"))
+				result.add(Preprocessing_Algorithm.FS_MOEA);
+			else if (s.equalsIgnoreCase("PSO_FS"))
+				result.add(Preprocessing_Algorithm.FS_PSO);
+			else if (s.equalsIgnoreCase("SSF_FS"))
+				result.add(Preprocessing_Algorithm.FS_SSF);
 			else if (s.equalsIgnoreCase("projection"))
 				result.add(Preprocessing_Algorithm.FT_RandomProjection);
 			else if (s.equalsIgnoreCase("pca"))
@@ -536,8 +550,8 @@ public class FVSHelper {
 		case FVS_Correlation:
 		case FVS_Random:
 		case FVS_Entropy:
-		case FVS_Random_Entropy:
-		case FVS_Probabilistic:
+		case FVS_Probabilistic_Regular:
+		case FVS_Probabilistic_Plus:
 			pt = PreprocessingType.FVS;
 			break;
 		case IS_Reservoir:
@@ -555,6 +569,10 @@ public class FVSHelper {
 		case FS_Relief:
 		case FS_SymmetricUncertainty:
 		case FS_Wrapper:
+		case FS_IWSS:
+		case FS_MOEA:
+		case FS_PSO:
+		case FS_SSF:
 			pt = PreprocessingType.FS;
 			break;
 		default:
@@ -577,5 +595,9 @@ public class FVSHelper {
 
 	public String getInformationMetric() {
 		return INFORMATION_METRIC;
+	}
+	
+	public boolean getDumpModelStatus() {
+		return DUMP_MODEL;
 	}
 }

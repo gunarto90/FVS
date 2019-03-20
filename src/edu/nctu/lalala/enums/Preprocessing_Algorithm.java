@@ -25,11 +25,11 @@ public enum Preprocessing_Algorithm {
 	/**
 	 * Entropy-based FVS with random selection
 	 */
-	FVS_Random_Entropy,
+	FVS_Probabilistic_Regular,
 	/**
 	 * Probabilistic FVS removal
 	 */
-	FVS_Probabilistic,
+	FVS_Probabilistic_Plus,
 	/* Instance Selection methods */
 	/**
 	 * Vitter, Jeffrey S. "Random sampling with a reservoir." ACM Transactions
@@ -102,5 +102,30 @@ public enum Preprocessing_Algorithm {
 	 * Kohavi, Ron, and George H. John. "Wrappers for feature subset selection."
 	 * Artificial intelligence 97.1-2 (1997): 273-324.
 	 */
-	FS_Wrapper
+	FS_Wrapper,
+	/**
+	 * Bermejo, P., Gámez, J. A., & Puerta, J. M. (2009, March). 
+	 * Incremental wrapper-based subset selection with replacement: An advantageous alternative to sequential forward selection.
+	 * In 2009 IEEE Symposium on Computational Intelligence and Data Mining (pp. 367-374). IEEE.
+	 */
+	FS_IWSS,
+	/**
+	 * F. Jimenez, G. Sanchez, J.M. Garcia, G. Sciavicco, L. Miralles (2016). 
+	 * Multi-objective evolutionary feature selection for online sales forecasting.
+	 * Neurocomputing 2016 
+	 * http://dx.doi.org/10.1016/j.neucom.2016.12.045. 
+	 */
+	FS_MOEA,
+	/**
+	 * Moraglio, A., Di Chio, C., and Poli, R. 
+	 * Geometric Particle Swarm Optimisation. 
+	 * EuroGP 2007, LNCS 445, pp. 125-135. 
+	 */
+	FS_PSO,
+	/**
+	 * Thiago F. Covões, Eduardo R. Hruschka (2011). 
+	 * Towards Improving Cluster-Based Feature Selection with a Simplified Silhouette Filter. 
+	 * Information Sciences. 181(18):3766-3782.
+	 */
+	FS_SSF
 }

@@ -1,8 +1,9 @@
 package edu.nctu.lalala.fvs.algorithm;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
@@ -12,6 +13,7 @@ import edu.nctu.lalala.fvs.interfaces.IFVS;
 import edu.nctu.lalala.util.FVSHelper;
 import edu.nctu.lalala.util.MathHelper;
 import weka.core.Instances;
+import weka.core.converters.ArffSaver;
 
 public class RandomEntropyFVS implements IFVS {
 	Instances inst;
@@ -36,6 +38,7 @@ public class RandomEntropyFVS implements IFVS {
 		this.fv_list = FVSHelper.getInstance().extractValuesFromData(inst);
 		if (params.length > 0)
 			this.epsilon = (Double) params[0];
+		writeToFile(inst, false);
 		preprocessing(inst);
 	}
 
@@ -48,8 +51,7 @@ public class RandomEntropyFVS implements IFVS {
 		// System.out.println(act_ent);
 
 		/* Generating entropy and frequency for each FV */
-		List<Double> entropies = FVSHelper.getInstance().generateEntropy(fv_list, inst.numInstances(),
-				inst.numClasses());
+		FVSHelper.getInstance().generateEntropy(fv_list, inst.numInstances(), inst.numClasses());
 		filtered_fv.putAll(fv_list);
 
 		double max_ig = 0.0;
@@ -138,6 +140,26 @@ public class RandomEntropyFVS implements IFVS {
 	public Instances output() {
 		boolean removeInstance = true;
 		Instances output = FVSHelper.getInstance().transformInstances(inst, this.output, filtered_fv, removeInstance);
+		writeToFile(output, true);
 		return output;
+	}
+
+	private void writeToFile(Instances output, boolean filtered) {
+		if (FVSHelper.getInstance().getDumpModelStatus()) {
+			ArffSaver saver = new ArffSaver();
+			saver.setInstances(output);
+			try {
+				File f = null;
+				if (filtered)
+					f = File.createTempFile(String.format("Random %.1f Entropy FVS", this.epsilon), ".arff");
+				else
+					f = File.createTempFile(String.format("Original %.1f Random Entropy FVS", this.epsilon), ".arff");
+				System.out.println(f.getAbsolutePath());
+				saver.setFile(f);
+				saver.writeBatch();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 	}
 }

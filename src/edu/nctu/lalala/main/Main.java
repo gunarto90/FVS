@@ -19,6 +19,12 @@ import edu.nctu.lalala.fvs.evaluation.FVSEvaluation;
 import edu.nctu.lalala.util.FVSHelper;
 import weka.attributeSelection.CfsSubsetEval;
 import weka.attributeSelection.ConsistencySubsetEval;
+import weka.attributeSelection.IWSS;
+import weka.attributeSelection.WrapperSubsetEval;
+import weka.attributeSelection.MultiObjectiveEvolutionarySearch;
+import weka.attributeSelection.PSOSearch;
+import weka.attributeSelection.SSF;
+import weka.attributeSelection.KMedoidsSampling;
 import weka.classifiers.Classifier;
 import weka.classifiers.rules.JRip;
 import weka.classifiers.trees.J48;
@@ -104,7 +110,7 @@ public class Main {
 		String lookupFolder = TEST_FOLDER;
 		String customConfigFile = null;
 
-		int repeat = 5;
+		int repeat = 1;
 		double[] options = { 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0 };
 		DOUBLE_PARAMS = new double[options.length * repeat];
 		for (int i = 0; i < options.length; i++) {
@@ -225,8 +231,8 @@ public class Main {
 									ThresholdType.NA, null);
 						} else if (pt == PreprocessingType.FVS) {
 							if (p_alg == Preprocessing_Algorithm.FVS_Random
-									|| p_alg == Preprocessing_Algorithm.FVS_Random_Entropy
-									|| p_alg == Preprocessing_Algorithm.FVS_Probabilistic) {
+									|| p_alg == Preprocessing_Algorithm.FVS_Probabilistic_Regular
+									|| p_alg == Preprocessing_Algorithm.FVS_Probabilistic_Plus) {
 								for (int i = 0; i < DOUBLE_PARAMS.length; i++) {
 									Double double_param = DOUBLE_PARAMS[i];
 									if (double_param == 1 && p_alg == Preprocessing_Algorithm.FVS_Random)
@@ -317,12 +323,13 @@ public class Main {
 		for (ClassifierType type : cts) {
 			if (type == ClassifierType.DecisionStump && p_alg != Preprocessing_Algorithm.Original)
 				continue;
-			FVSHelper.getInstance().logFile("Classifier: " + type);
+			if (FVSHelper.getInstance().getDebugStatus())
+				FVSHelper.getInstance().logFile("Classifier: " + type);
 			double modelSize = Double.NEGATIVE_INFINITY;
 			if (modelSize == Double.NEGATIVE_INFINITY) {
 				FVSEvaluation eval = new FVSEvaluation(instances);
 				// Cross validate dataset
-				eval.stratifiedFold(type, CROSS_VALIDATION, p_alg, filter);
+				eval.stratifiedFold(type, CROSS_VALIDATION, p_alg, filter, context, double_param);
 				if (p_alg == Preprocessing_Algorithm.FVS_Entropy)
 					eval.setDouble_param(((EntropyFVS) ((FVS_Filter) filter).getFvs()).getThreshold());
 				else
@@ -461,6 +468,44 @@ public class Main {
 			temp = (AttributeSelection) filter;
 			ConsistencySubsetEval cs = new ConsistencySubsetEval();
 			temp.setEvaluator(cs);
+			break;
+		case FS_IWSS:
+			filter = new AttributeSelection();
+			temp = (AttributeSelection) filter;
+			WrapperSubsetEval wrap = new WrapperSubsetEval();
+			wrap.setClassifier(new J48());
+			temp.setEvaluator(wrap);
+			try {
+				IWSS iwss = new IWSS();
+				temp.setSearch(iwss);
+			} catch (Exception e) {
+				
+			}
+			break;
+		case FS_MOEA:
+			filter = new AttributeSelection();
+			temp = (AttributeSelection) filter;
+			wrap = new WrapperSubsetEval();
+			wrap.setClassifier(new J48());
+			temp.setEvaluator(wrap);
+			MultiObjectiveEvolutionarySearch moes = new MultiObjectiveEvolutionarySearch();
+			temp.setSearch(moes);
+			break;
+		case FS_PSO:
+			filter = new AttributeSelection();
+			temp = (AttributeSelection) filter;
+			wrap = new WrapperSubsetEval();
+			wrap.setClassifier(new J48());
+			temp.setEvaluator(wrap);
+			PSOSearch pso = new PSOSearch();
+			temp.setSearch(pso);
+			break;
+		case FS_SSF:
+			filter = new AttributeSelection();
+			temp = (AttributeSelection) filter;
+			SSF ssf = new SSF();
+			temp.setEvaluator(ssf);
+			temp.setSearch(new KMedoidsSampling());
 			break;
 		case FT_RandomProjection:
 			RandomProjection rp = new RandomProjection();

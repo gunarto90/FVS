@@ -39,7 +39,10 @@
         "projection",
         "pca",
         "reservoir",
-        "misclassified"
+        "misclassified",
+        "IWSS_FS",
+        "MOEA_FS",
+        "PSO_FS"
     ],
     "folder_setup": {
         "intermediate": "./intermediate/"
@@ -49,5 +52,6 @@
         "noise_level":10
     },
     "info" : "ig",
-    "debug": true
+    "debug": true,
+    "dump_model":false
 }

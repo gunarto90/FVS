@@ -47,6 +47,34 @@
 			<artifactId>commons-math3</artifactId>
 			<version>3.6.1</version>
 		</dependency>
+		<dependency>
+		    <groupId>weka.iwss</groupId>
+		    <artifactId>iwss</artifactId>
+		    <version>1.0</version>
+		    <scope>system</scope>
+		    <systemPath>${project.basedir}/addons/jar/IWSS.jar</systemPath>
+		</dependency>
+		<dependency>
+		    <groupId>weka.moes</groupId>
+		    <artifactId>moes</artifactId>
+		    <version>1.0</version>
+		    <scope>system</scope>
+		    <systemPath>${project.basedir}/addons/jar/MultiObjectiveEvolutionarySearch.jar</systemPath>
+		</dependency>
+		<dependency>
+		    <groupId>weka.pso</groupId>
+		    <artifactId>pso</artifactId>
+		    <version>1.0</version>
+		    <scope>system</scope>
+		    <systemPath>${project.basedir}/addons/jar/PSOSearch.jar</systemPath>
+		</dependency>
+		<dependency>
+		    <groupId>weka.ssf</groupId>
+		    <artifactId>ssf</artifactId>
+		    <version>1.0</version>
+		    <scope>system</scope>
+		    <systemPath>${project.basedir}/addons/jar/SSF.jar</systemPath>
+		</dependency>
 	</dependencies>
 	<groupId>fvs</groupId>
 	<build>

@@ -2,6 +2,8 @@ package edu.nctu.lalala.fvs;
 
 import java.util.Objects;
 
+import edu.nctu.lalala.util.FVSHelper;
+
 /**
  * Feature-Value pair class
  * 
@@ -14,6 +16,7 @@ public class FV implements Comparable<FV> {
 	/**
 	 * Instance index number
 	 */
+	@SuppressWarnings("unused")
 	private int index;
 	/**
 	 * Column index number
@@ -74,18 +77,31 @@ public class FV implements Comparable<FV> {
 
 	@Override
 	public String toString() {
-		//String output = String.format("FV{%-3d : %15s (%2.0f) [E:%.3f] [F:%.3f]} ", this.feature, this.value, this.label, getEntropy(), getFrequency());
-		String output = String.format("[%d:%s]", this.feature, this.value);
+//		String output = String.format("FV{%-3d : %15s (%2.0f) [E:%.3f] [F:%.3f]} ", this.feature, this.value, this.label, getEntropy(), getFrequency());
+		String output = String.format("FV{%d:%s (%.0f) [E:%.3f] [F:%.3f] [IG:%.3f]}\n", this.feature, this.value, this.label, getEntropy(), getFrequency(), getIg());
+//		String output = String.format("[%d:%s]", this.feature, this.value);
 		return output;
 	}
 	
 	@Override
 	public int compareTo(FV arg0) {
-		if(this.getEntropy() < arg0.getEntropy())
-			return -1;
-		else if(this.getEntropy() > arg0.getEntropy())
-			return 1;
-		else return 0;
+		if (FVSHelper.getInstance().getInformationMetric().equals("ig"))
+		{
+			if(this.getIg() > arg0.getIg())
+				return -1;
+			else if(this.getIg() < arg0.getIg())
+				return 1;
+			else return 0;
+		}
+		else
+		{
+			if(this.getEntropy() < arg0.getEntropy())
+				return -1;
+			else if(this.getEntropy() > arg0.getEntropy())
+				return 1;
+			else return 0;
+		}
+		
 	}
 
 	public int getFeature() {
