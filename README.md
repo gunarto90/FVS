@@ -2,7 +2,8 @@
 Feature Value Selection by Gunarto Sindoro Njoo
 
 This is the implementation of the research work in the DSAA 2014. If you are interested in this work, please refer and cite the following paper.
-- Gunarto Sindoro Njoo, Yu-Hsiang Peng, Kuo-Wei Hsu, Wen-Chih Peng: On selecting feature-value pairs on smart phones for activity inferences. DSAA 2014: 319-325
+- <a href="https://ieeexplore.ieee.org/document/7058091/">Gunarto Sindoro Njoo, Yu-Hsiang Peng, Kuo-Wei Hsu, Wen-Chih Peng: On selecting feature-value pairs on smart phones for activity inferences. IEEE DSAA 2014: 319-325.</a>
+- Gunarto Sindoro Njoo, Baihua Zheng, Kuo-Wei Hsu, Wen-Chih Peng. Probabilistic Value Selection for Space Efficient Model. IEEE MDM 2020.
 
 Following option need to be set before run the application
 - <b> Java VM Option </b> -Xmx4g
