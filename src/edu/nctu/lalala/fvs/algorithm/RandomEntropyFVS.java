@@ -38,7 +38,7 @@ public class RandomEntropyFVS implements IFVS {
 		this.fv_list = FVSHelper.getInstance().extractValuesFromData(inst);
 		if (params.length > 0)
 			this.epsilon = (Double) params[0];
-		writeToFile(inst, false);
+//		writeToFile(inst, false);
 		preprocessing(inst);
 	}
 
@@ -140,7 +140,7 @@ public class RandomEntropyFVS implements IFVS {
 	public Instances output() {
 		boolean removeInstance = true;
 		Instances output = FVSHelper.getInstance().transformInstances(inst, this.output, filtered_fv, removeInstance);
-		writeToFile(output, true);
+//		writeToFile(output, true);
 		return output;
 	}
 

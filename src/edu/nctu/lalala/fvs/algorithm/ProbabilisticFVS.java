@@ -113,7 +113,7 @@ public class ProbabilisticFVS implements IFVS {
 		boolean probabilistic = true;
 		boolean average = false;
 		Instances output = transformInstances(inst, this.output, filtered_fv, removeInstance, probabilistic, average);
-		writeToFile(output, true);
+//		writeToFile(output, true);
 		return output;
 	}
 	

@@ -43,9 +43,8 @@ import weka.filters.unsupervised.instance.ReservoirSample;
 // Updated March 3rd, 2016
 public class Main {
 	private static final boolean IS_LOG_INTERMEDIATE = true;
-	// private static double[] DOUBLE_PARAMS = { 1.0, 0.9, 0.8, 0.7, 0.6, 0.5,
-	// 0.4, 0.3, 0.2, 0.1 };
-	private static double[] DOUBLE_PARAMS = { 1.0, 1.0, 1.0, 0.5, 0.5, 0.5, 0.1, 0.1, 0.1 };
+	 private static double[] DOUBLE_PARAMS = { 1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1 };
+//	private static double[] DOUBLE_PARAMS = { 1.0, 1.0, 1.0, 0.5, 0.5, 0.5, 0.1, 0.1, 0.1 };
 
 	private static final String DEFAULT_DATASET_FOLDER = "dataset";
 	private static final String NOMINAL_FOLDER = DEFAULT_DATASET_FOLDER + "/nominal/";
@@ -110,8 +109,9 @@ public class Main {
 		String lookupFolder = TEST_FOLDER;
 		String customConfigFile = null;
 
+		// #Repeat
 		int repeat = 1;
-		double[] options = { 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0 };
+		double[] options = { 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9 };
 		DOUBLE_PARAMS = new double[options.length * repeat];
 		for (int i = 0; i < options.length; i++) {
 			for (int j = 0; j < repeat; j++) {
@@ -131,6 +131,13 @@ public class Main {
 			} catch (Exception e) {
 			}
 		} else if (args.length == 3) {
+			lookupFolder = args[0];
+			try {
+				CROSS_VALIDATION = Integer.parseInt(args[1]);
+			} catch (Exception e) {
+			}
+			customConfigFile = args[2];
+		} else {
 			lookupFolder = args[0];
 			try {
 				CROSS_VALIDATION = Integer.parseInt(args[1]);
@@ -160,19 +167,12 @@ public class Main {
 		List<ThresholdType> tts = FVSHelper.getInstance().getThresholdType(config);
 		List<Preprocessing_Algorithm> fas = FVSHelper.getInstance().getPreprocessing_Algorithm(config);
 
-		MathExpression mathexpr = new MathExpression();
-		mathexpr.setIgnoreRange("4-6,13-14");
-		mathexpr.setInvertSelection(true);
-		try {
-			mathexpr.setExpression("A*100000");
-		} catch (Exception e1) {
-			e1.printStackTrace();
-		}
 		// For each file
 		for (String datasetName : folder.list()) {
 			if (!datasetName.endsWith(".arff"))
 				continue;
 			try {
+				System.out.println(new Date());
 				System.out.println(datasetName);
 				// Load original data
 				Instances data = null;
@@ -192,15 +192,6 @@ public class Main {
 						if (data == null || data.numInstances() <= 0) {
 							// Only load data if necessary (no cache)
 							data = loadData(lookupFolder + datasetName);
-							/*
-							 * Delete timestamp (NCTU and OPP) or user id (HAR)
-							 */
-							data.deleteAttributeAt(0);
-							/* Adjust GPS_X and GPS_Y in NCTU dataset */
-							if (datasetName.contains("agg")) {
-								mathexpr.setInputFormat(data);
-								data = Filter.useFilter(data, mathexpr);
-							}
 						}
 						if (dis_alg != DiscretizationType.None)
 							discretized = discretize(data, dis_alg);

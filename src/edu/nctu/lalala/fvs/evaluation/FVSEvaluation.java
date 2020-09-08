@@ -102,6 +102,7 @@ public class FVSEvaluation extends weka.classifiers.Evaluation {
 		for (int n = 0; n < folds; n++) {
 			Instances train = randData.trainCV(folds, n, rand);
 			Instances test = randData.testCV(folds, n);
+//			System.err.println(String.format("Train/Test instances: %d/%d", train.size(), test.size()));
 			PreprocessingType pt = FVSHelper.getInstance().getPreprocessType(p_alg);
 
 			if (filter != null) {
